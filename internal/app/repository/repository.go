@@ -2,6 +2,7 @@ package repository
 
 import (
 	"fmt"
+	"strings"
 )
 
 type Repository struct {
@@ -54,4 +55,20 @@ func (r *Repository) GetOrder(id int) (Order, error) {
 		}
 	}
 	return Order{}, fmt.Errorf("заказ не найден") // тут нужна кастомная ошибка, чтобы понимать на каком этапе возникла ошибка и что произошло
+}
+
+func (r *Repository) GetOrdersByTitle(title string) ([]Order, error) {
+	orders, err := r.GetOrders()
+	if err != nil {
+		return []Order{}, err
+	}
+
+	var result []Order
+	for _, order := range orders {
+		if strings.Contains(strings.ToLower(order.Title), strings.ToLower(title)) {
+			result = append(result, order)
+		}
+	}
+
+	return result, nil
 }
