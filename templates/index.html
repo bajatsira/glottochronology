@@ -3,6 +3,21 @@
     <title>RIP</title>
 </head>
 <body>
-    <h1>Hello world</h1>
+   <header>
+    <h1>
+        <a href="/hello">Список</a>
+<!--Простой хедер, чтобы возвращаться на главную страницу-->
+    </h1>
+</header>
+    <h1>
+        {{ .time }}
+    </h1>
+    <ul>
+        {{ range .orders }}
+        <li>
+            <a href="/order/{{ .ID }}"> {{ .Title }} </a>
+        </li>
+        {{ end }}
+    </ul>
 </body>
 </html>
