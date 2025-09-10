@@ -22,6 +22,7 @@ func StartServer() {
 	r := gin.Default()
 	// добавляем наш html/шаблон
 	r.LoadHTMLGlob("templates/*")
+	r.Static("/static", "./resources")
 
 	r.GET("/hello", handler.GetOrders)
 	r.GET("/order/:id", handler.GetOrder) // вот наш новый обработчик
