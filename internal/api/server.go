@@ -24,8 +24,10 @@ func StartServer() {
 	r.LoadHTMLGlob("templates/*")
 	r.Static("/static", "./resources")
 
-	r.GET("/hello", handler.GetOrders)
-	r.GET("/order/:id", handler.GetOrder) // вот наш новый обработчик
+	r.GET("/languages", handler.GetLangs)
+	//r.GET("/order/:id", handler.GetOrder) // вот наш новый обработчик
+	r.GET("/lang/:id", handler.GetLang)
+	r.GET("/chronos", handler.GetChronos)
 
 	r.Run() // listen and serve on 0.0.0.0:8080 (for windows "localhost:8080")
 	log.Println("Server down")

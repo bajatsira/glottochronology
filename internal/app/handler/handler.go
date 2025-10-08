@@ -62,3 +62,55 @@ func (h *Handler) GetOrder(ctx *gin.Context) {
 		"order": order,
 	})
 }
+
+func (h *Handler) GetLangs(ctx *gin.Context) {
+	var langs []repository.Lang
+	var err error
+
+	searchQuery := ctx.Query("query") // получаем значение из поля поиска
+	if searchQuery == "" {            // если поле поиска пусто, то просто получаем все языки
+		langs, err = h.Repository.GetLangs()
+		if err != nil {
+			logrus.Error(err)
+		}
+	} else {
+		langs, err = h.Repository.GetLangsByName(searchQuery) // ищем языки по названию
+		if err != nil {
+			logrus.Error(err)
+		}
+	}
+
+	ctx.HTML(http.StatusOK, "index.html", gin.H{
+		"time":  time.Now().Format("15:04:05"),
+		"langs": langs,
+		"query": searchQuery, // передаем введенный запрос обратно на страницу
+	})
+}
+
+func (h *Handler) GetLang(ctx *gin.Context) {
+	idStr := ctx.Param("id")
+	id, err := strconv.Atoi(idStr) // преобразуем строку в int
+	if err != nil {
+		logrus.Error(err)
+	}
+
+	lang, err := h.Repository.GetLang(id)
+	if err != nil {
+		logrus.Error(err)
+	}
+
+	ctx.HTML(http.StatusOK, "lang.html", gin.H{
+		"lang": lang,
+	})
+
+}
+
+// GetChronos - отображение страницы заявки с заглушкой
+func (h *Handler) GetChronos(ctx *gin.Context) {
+	// Используем заглушку из репозитория или создаём локальную для примера
+	request := h.Repository.GetChronosData() // Предполагаемый метод
+
+	ctx.HTML(http.StatusOK, "chronos.html", gin.H{
+		"request": request,
+	})
+}
