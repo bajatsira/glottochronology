@@ -74,30 +74,81 @@ main h2 {
     font-weight: 600;
 }
 
-/* Секция выбора базового языка */
+/* Секция базового языка */
 .base-language {
     background-color: #f9f9f9;
     padding: 15px;
     border-radius: 6px;
     margin-bottom: 20px;
     box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+    display: flex;
+    align-items: center;
+    gap: 15px;
 }
 
-.base-language h3 {
+.language-checkbox {
+    display: flex;
+    align-items: center;
+}
+
+.language-checkbox input[type="checkbox"] {
+    display: none; /* Скрываем стандартный чекбокс */
+}
+
+.language-checkbox label {
+    width: 20px;
+    height: 20px;
+    background-color: #ffffff;
+    border: 2px solid #666666;
+    border-radius: 4px;
+    cursor: pointer;
+    position: relative;
+    transition: background-color 0.3s ease;
+}
+
+.language-checkbox input[type="checkbox"]:checked + label::after {
+    content: "✔";
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    color: #1a1a1a;
+    font-size: 14px;
+}
+
+.base-language .language-checkbox label {
+    background-color: #d4edda; /* Зелёный фон для отмеченного базового языка */
+    border-color: #28a745;
+}
+
+.base-language .language-title {
     font-size: 20px;
     color: #1a1a1a;
-    margin-bottom: 10px;
-    font-weight: 600;
+    margin: 0;
+    flex-grow: 1;
 }
 
-.base-language p {
+.base-language .language-image {
+    width: 100px;
+    height: 100px;
+    object-fit: cover;
+    border-radius: 4px;
+    margin-left: 15px;
+}
+
+.base-language .language-details {
+    flex-grow: 2;
+    margin-left: 15px;
+}
+
+.base-language .language-details p {
     font-size: 16px;
     color: #666666;
     margin: 5px 0;
     line-height: 1.5;
 }
 
-/* Список выбранных языков */
+/* Список языков для сравнения */
 .language-list {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
@@ -111,6 +162,9 @@ main h2 {
     border: 1px solid #e0e0e0;
     border-radius: 6px;
     box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+    display: flex;
+    align-items: center;
+    gap: 15px;
     transition: transform 0.2s ease, box-shadow 0.2s ease;
 }
 
@@ -119,26 +173,40 @@ main h2 {
     box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
 }
 
-.language-item h3 {
+.language-item .language-checkbox label {
+    border-color: #1a1a1a;
+}
+
+.language-item .language-checkbox input[type="checkbox"]:checked + label {
+    background-color: #d4edda;
+    border-color: #28a745;
+}
+
+.language-item .language-checkbox input[type="checkbox"]:checked + label::after {
+    content: "✔";
+}
+
+.language-item .language-title {
     font-size: 18px;
     color: #1a1a1a;
-    margin-bottom: 10px;
+    margin: 0;
+    flex-grow: 1;
 }
 
-.language-item img {
-    width: 100%;
-    height: 150px;
+.language-item .language-image {
+    width: 100px;
+    height: 100px;
     object-fit: cover;
     border-radius: 4px;
-    margin-bottom: 10px;
-    transition: opacity 0.3s ease;
+    margin-left: 15px;
 }
 
-.language-item img:hover {
-    opacity: 0.9;
+.language-item .language-details {
+    flex-grow: 2;
+    margin-left: 15px;
 }
 
-.language-item p {
+.language-item .language-details p {
     font-size: 14px;
     color: #666666;
     margin: 5px 0;
@@ -206,6 +274,15 @@ main h2 {
         font-size: 20px;
     }
 
+    .base-language, .language-item {
+        flex-direction: column;
+        text-align: center;
+    }
+
+    .base-language .language-image, .language-item .language-image {
+        margin: 10px 0;
+    }
+
     .language-list {
         grid-template-columns: 1fr;
     }
@@ -256,9 +333,16 @@ main h2 {
         box-shadow: 0 0 5px rgba(255, 255, 255, 0.2);
     }
 
-    .language-item {
-        background-color: #333333;
-        border-color: #444444;
+    .base-language .language-checkbox label,
+    .language-item .language-checkbox label {
+        background-color: #444444;
+        border-color: #bbbbbb;
+    }
+
+    .base-language .language-checkbox label,
+    .language-item .language-checkbox input[type="checkbox"]:checked + label {
+        background-color: #2e7d32;
+        border-color: #2e7d32;
     }
 
     .empty-message {
