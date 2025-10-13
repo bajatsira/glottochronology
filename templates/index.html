@@ -1,7 +1,7 @@
 <html lang="en">
 <head>
     <title>RIP</title>
-    <link rel="stylesheet" href="/static/styles/indexStyle.css">
+    <link rel="stylesheet" href="/styles/indexStyle.css">
 
 </head>
 <body>
@@ -36,7 +36,7 @@
 <div class="language-grid">
         {{ range .langs }}
         <div class="language-card">
-            <img src="/static/img/{{ .ID }}.jpg" alt="{{ .Name }}" class="card-image">
+            <img src="/img/{{ .ID }}.jpg" alt="{{ .Name }}" class="card-image">
             <h3>{{ .Name }}</h3>
             <p>{{ .Family }}</p>
             <a href="/lang/{{ .ID }}" class="card-link">Подробнее</a>

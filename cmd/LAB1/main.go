@@ -32,4 +32,5 @@ func main() {
 
 	application := pkg.NewApp(conf, router, hand)
 	application.RunApp()
+
 }
