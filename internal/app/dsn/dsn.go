@@ -7,13 +7,16 @@ import (
 
 func FromEnv() string {
 	host := os.Getenv("DB_HOST")
-	if host == "" {
-		return ""
-	}
 	port := os.Getenv("DB_PORT")
+	name := os.Getenv("DB_NAME")
 	user := os.Getenv("DB_USER")
 	pass := os.Getenv("DB_PASS")
-	dbname := os.Getenv("DB_NAME")
-	// И вот мы возвращаем dsn, который необходим для подключения к БД
-	return fmt.Sprintf("host=%s port=%s user=%s password=%s dbname=%s sslmode=disable", host, port, user, pass, dbname)
+
+	// ✅ ПРАВИЛЬНАЯ строка подключения для GORM + PostgreSQL
+	dsn := fmt.Sprintf(
+		"host=%s user=%s password=%s dbname=%s port=%s sslmode=disable TimeZone=Europe/Moscow",
+		host, user, pass, name, port,
+	)
+
+	return dsn
 }

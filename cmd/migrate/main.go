@@ -11,6 +11,7 @@ import (
 
 func main() {
 	_ = godotenv.Load()
+
 	db, err := gorm.Open(postgres.Open(dsn.FromEnv()), &gorm.Config{})
 	if err != nil {
 		panic("failed to connect database")
@@ -19,6 +20,9 @@ func main() {
 	// Migrate the schema
 	err = db.AutoMigrate(
 		&ds.Lang{},
+		&ds.Glotto{},
+		&ds.Users{},
+		&ds.GlottoLanguage{},
 	)
 	if err != nil {
 		panic("cant migrate db")

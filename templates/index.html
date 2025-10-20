@@ -1,47 +1,53 @@
+<!DOCTYPE html>
 <html lang="en">
 <head>
+    <meta charset="UTF-8">
     <title>RIP</title>
     <link rel="stylesheet" href="/styles/indexStyle.css">
-
 </head>
 <body>
    <header>
-    <h1>
-        <a href="/languages"><svg width="57" height="23" viewBox="0 0 57 23" fill="none" xmlns="http://www.w3.org/2000/svg">
-<path d="M0 23V0H4.41599L14.0554 14.49V0H18.861V23H14.4126L4.76883 8.51V23H0Z" fill="#32363A"/>
-<path d="M28.5456 4.27344H32.7019V9.53058H37.6374V13.4406H32.7019V18.7306H28.5456V13.4406H23.6426V9.53058H28.5456V4.27344Z" fill="#32363A"/>
-<path d="M51.8599 18.9914H56.3095V23H42.4121V18.9914H47.2177V8.37857C46.8427 8.44683 46.4623 8.47983 46.0813 8.47715H42.477V4.56714H45.5617C46.7307 4.56714 47.2827 3.48286 47.2827 2.23429V0H51.861L51.8599 18.9914Z" fill="#32363A"/>
-</svg>
-</a>
-    </h1>
-</header>
-<form action="/languages" method="GET">
-    <input type="text" name="query" placeholder="Введите запрос" value="{{ .query }}">
-    <!-- value="{{ .query }}"  нужно для того, чтобы из обработчика передавать 
-    введенный запрос обратно на страницу. Тем самым введенный текст в поле поиска будет сохраняться-->
-    <button type="submit">Найти</button>
-</form>
-<h2>
-    {{ .time }}
-</h2>
-<!--<ul>
-    {{ range .orders }}
-    <li>
-        <a href="/order/{{ .ID }}"> {{ .Title }} </a>
-    </li>
-    {{ end }}
-</ul>
--->
+       <h1>
+           <a href="/languages">
+               <svg width="57" height="23" viewBox="0 0 57 23" fill="none" xmlns="http://www.w3.org/2000/svg">
+                   <path d="M0 23V0H4.41599L14.0554 14.49V0H18.861V23H14.4126L4.76883 8.51V23H0Z" fill="#32363A"/>
+                   <path d="M28.5456 4.27344H32.7019V9.53058H37.6374V13.4406H32.7019V18.7306H28.5456V13.4406H23.6426V9.53058H28.5456V4.27344Z" fill="#32363A"/>
+                   <path d="M51.8599 18.9914H56.3095V23H42.4121V18.9914H47.2177V8.37857C46.8427 8.44683 46.4623 8.47983 46.0813 8.47715H42.477V4.56714H45.5617C46.7307 4.56714 47.2827 3.48286 47.2827 2.23429V0H51.861L51.8599 18.9914Z" fill="#32363A"/>
+               </svg>
+           </a>
+       </h1>
+   </header>
 
-<div class="language-grid">
-        {{ range .langs }}
-        <div class="language-card">
-            <img src="/img/{{ .ID }}.jpg" alt="{{ .Name }}" class="card-image">
-            <h3>{{ .Name }}</h3>
-            <p>{{ .Family }}</p>
-            <a href="/lang/{{ .ID }}" class="card-link">Подробнее</a>
-        </div>
-        {{ end }}
-    </div>
+   <form action="/languages" method="GET">
+       <input type="text" name="query" placeholder="Введите запрос" value="{{ .query }}">
+       <button type="submit">Найти</button>
+   </form>
+
+   <h2>
+       {{ .time }}
+   </h2>
+
+   <div class="language-grid">
+       {{ range .langs }}
+       <div class="language-card">
+           <img src="/img/{{ .ID }}.jpg" alt="{{ .Name }}" class="card-image">
+           <h3>{{ .Name }}</h3>
+           <p>{{ .Family }}</p>
+           <a href="/lang/{{ .ID }}" class="card-link">Подробнее</a>
+       </div>
+       {{ end }}
+   </div>
+
+   <!-- КОРЗИНА В КОНЦЕ BODY -->
+   <div class="cart-icon">
+       {{ if ne .cart_count 0 }}
+       <a href="/glotto/draft/{{ .draft_id }}">
+           <img src="/img/carticon.png" alt="Cart">
+           <span class="cart-count">{{ .cart_count }}</span>
+       </a>
+       {{ else }}
+       <img src="/img/carticon.png" alt="Cart" class="cart-empty">
+       {{ end }}
+   </div>
 </body>
 </html>
