@@ -210,16 +210,28 @@ func (r *Repository) GetDraftByResearcher(researcherID uint) (ds.Glotto, error) 
 }
 
 // DeleteDraftSQL — логическое удаление заявки через raw SQL UPDATE (требование в методичке)
-func (r *Repository) DeleteDraftSQL(glottoID uint) error {
-	// Устанавливаем статус и время finished_at
-	if err := r.db.Exec("UPDATE glottos SET status = $1, finished_at = now() WHERE id = $2", "удалён", glottoID).Error; err != nil {
-		return err
-	}
-	return nil
+func (r *Repository) DeleteDraftSQL(id uint) error {
+	query := `UPDATE glottos SET status = 'удалён', date_finish = NOW() WHERE id = $1`
+	return r.db.Exec(query, id).Error
 }
 
 // Пример альтернативного метода: получение glotto по ID с проверкой статуса (если нужно)
 func (r *Repository) GetDraftByID(id uint) (ds.Glotto, error) {
+	var g ds.Glotto
+	err := r.db.Preload("Languages.Language").First(&g, id).Error
+	if err != nil {
+		return ds.Glotto{}, err
+	}
+
+	// если заявка удалена — считаем её недоступной
+	if g.Status == "удалён" {
+		return ds.Glotto{}, gorm.ErrRecordNotFound
+	}
+
+	return g, nil
+}
+
+func (r *Repository) GetGlottoByID(id uint) (ds.Glotto, error) {
 	var g ds.Glotto
 	err := r.db.Preload("Languages.Language").First(&g, id).Error
 	if err != nil {

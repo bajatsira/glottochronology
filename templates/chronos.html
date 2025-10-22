@@ -62,6 +62,11 @@
             </div>
         </section>
 
+        <form action="/glotto/delete/{{ .glotto.ID }}" method="POST" onsubmit="return confirm('Вы уверены, что хотите удалить заявку?');">
+    <button type="submit" class="delete-button">Удалить заявку</button>
+</form>
+
+
         {{ else }}
         <div class="empty-message">
             <p>У вас пока нет активной заявки. Добавьте языки для создания новой.</p>
@@ -78,6 +83,10 @@
                 <input class="field-input result-input" type="text" name="divergence" value="{{ .glotto.ResultYearsAgo.Int64 }}">
             </div>
         </div>
+        
     </main>
+
+   
+</form>
 </body>
 </html>
