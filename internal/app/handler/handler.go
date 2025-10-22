@@ -26,6 +26,9 @@ func (h *Handler) RegisterHandler(router *gin.Engine) {
 	//r.GET("/order/:id", handler.GetOrder) // вот наш новый обработчик
 	router.GET("/lang/:id", h.GetLang)
 	//router.GET("/chronos", h.GetChronos)
+	router.GET("/glotto/draft", h.GetDraft) // просмотр содержимого текущей заявки
+	router.POST("/glotto/add/:id", h.AddLanguageToDraft)
+	router.POST("/glotto/delete/:id", h.DeleteGlotto) // логическое удаление заявки
 
 }
 

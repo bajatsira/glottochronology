@@ -12,7 +12,6 @@ func FromEnv() string {
 	user := os.Getenv("DB_USER")
 	pass := os.Getenv("DB_PASS")
 
-	// ✅ ПРАВИЛЬНАЯ строка подключения для GORM + PostgreSQL
 	dsn := fmt.Sprintf(
 		"host=%s user=%s password=%s dbname=%s port=%s sslmode=disable TimeZone=Europe/Moscow",
 		host, user, pass, name, port,

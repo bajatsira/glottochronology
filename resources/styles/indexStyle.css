@@ -226,6 +226,47 @@ h2 {
     background-color: #333333;
 }
 
+.card-link {
+  display: inline-block;
+  padding: 8px 16px;
+  background-color: #2b6cb0;
+  color: white;
+  border-radius: 8px;
+  text-decoration: none;
+  font-size: 0.9rem;
+  transition: background-color 0.2s ease;
+}
+
+.card-link:hover {
+  background-color: #1a4f88;
+}
+
+.card-actions {
+  display: flex;
+  justify-content: center;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.add-form {
+  display: inline;
+}
+
+.add-btn {
+  padding: 8px 16px;
+  background-color: #38a169;
+  color: white;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 0.9rem;
+  transition: background-color 0.2s ease;
+}
+
+.add-btn:hover {
+  background-color: #2f855a;
+}
+
 
 
 

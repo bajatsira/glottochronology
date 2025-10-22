@@ -5,6 +5,7 @@ type Order struct {
 	Title string
 }
 
+/*
 type Lang struct {
 	ID            int    `gorm:"primaryKey"`
 	Name          string `gorm:"type:varchar(50);not null"`
@@ -14,3 +15,4 @@ type Lang struct {
 	Description   string `gorm:"type:text"`
 	PhotoURL      string `gorm:"type:varchar(255)"`
 }
+*/

@@ -27,7 +27,7 @@
        {{ .time }}
    </h2>
 
-   <div class="language-grid">
+   <!---<div class="language-grid">
        {{ range .langs }}
        <div class="language-card">
            <img src="/img/{{ .ID }}.jpg" alt="{{ .Name }}" class="card-image">
@@ -36,9 +36,50 @@
            <a href="/lang/{{ .ID }}" class="card-link">Подробнее</a>
        </div>
        {{ end }}
-   </div>
+   </div> 
 
-   <!-- КОРЗИНА В КОНЦЕ BODY -->
+   <h2>Список языков</h2>
+<div class="language-grid">
+    {{ if .langs }}
+        {{ range .langs }}
+        <div class="language-card">
+            <h3>{{ .Name }}</h3>
+            <p>Семья: {{ .Family }}</p>
+            <p>Ветвь: {{ .Subgroup }}</p>
+           <img src="/img/{{ .ID }}.jpg" alt="{{ .Name }}" class="card-image">
+
+            Форма для добавления языка в черновик 
+            <form action="/glotto/add/{{ .ID }}" method="post">
+                <button type="submit">Добавить язык в заявку</button>
+            </form>
+        </div>
+        {{ end }}
+    {{ else }}
+        <p>Языков не найдено.</p>
+    {{ end }}
+</div>--->
+
+
+<div class="language-grid">
+  {{ range .langs }}
+  <div class="language-card">
+    <img src="/img/{{ .ID }}.jpg" alt="{{ .Name }}" class="card-image">
+    <div class="card-content">
+      <h3 class="card-title">{{ .Name }}</h3>
+      <p class="card-family">{{ .Family }}</p>
+      <div class="card-actions">
+        <a href="/lang/{{ .ID }}" class="card-link">Подробнее</a>
+        <form action="/glotto/add/{{ .ID }}" method="POST" class="add-form">
+          <button type="submit" class="add-btn">Добавить в заявку</button>
+        </form>
+      </div>
+    </div>
+  </div>
+  {{ end }}
+</div>
+
+
+
    <div class="cart-icon">
        {{ if ne .cart_count 0 }}
        <a href="/glotto/draft/{{ .draft_id }}">
