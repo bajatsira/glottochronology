@@ -5,6 +5,10 @@ import (
 	"strconv"
 	"time"
 
+	//"errors"
+	//"gorm.io/gorm"
+
+	"LAB1/internal/app/auth"
 	"LAB1/internal/app/ds"
 
 	"github.com/gin-gonic/gin"
@@ -86,7 +90,8 @@ func (h *Handler) AddLanguageToDraft(ctx *gin.Context) {
 		return
 	}
 
-	researcherID := uint(1) // пока хардкодим
+	//researcherID := uint(1) // пока хардкодим
+	researcherID := auth.GetCreatorID()
 
 	err = h.Repository.AddServiceToDraft(researcherID, uint(langID))
 	if err != nil {
@@ -156,4 +161,67 @@ func (h *Handler) DeleteGlotto(ctx *gin.Context) {
 
 	// Редирект на список языков после удаления
 	ctx.Redirect(http.StatusSeeOther, "/languages")
+}
+
+func (h *Handler) GetDraftByID(ctx *gin.Context) {
+	idStr := ctx.Param("id")
+	id, err := strconv.Atoi(idStr)
+	if err != nil {
+		ctx.HTML(http.StatusBadRequest, "404.html", nil)
+		return
+	}
+
+	draft, err := h.Repository.GetGlottoByID(uint(id))
+	if err != nil {
+		ctx.HTML(http.StatusNotFound, "404.html", nil)
+		return
+	}
+
+	ctx.HTML(http.StatusOK, "chronos.html", gin.H{
+		"glotto": draft,
+	})
+}
+
+// ApiGetLangs - возвращает JSON список языков, поддерживает query=name и optional filters
+func (h *Handler) ApiGetLangs(c *gin.Context) {
+	q := c.Query("query")
+	var langs []ds.Lang
+	var err error
+	if q == "" {
+		langs, err = h.Repository.GetLangs()
+	} else {
+		langs, err = h.Repository.GetLangsByName(q)
+	}
+	if err != nil {
+		h.errorHandler(c, http.StatusInternalServerError, err)
+		return
+	}
+	c.JSON(http.StatusOK, langs)
+}
+
+type CreateLangRequest struct {
+	Name        string `json:"name" binding:"required"`
+	Family      string `json:"family"`
+	Subgroup    string `json:"subgroup"`
+	Description string `json:"description"`
+}
+
+// ApiCreateLang
+func (h *Handler) ApiCreateLang(c *gin.Context) {
+	var req CreateLangRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+	lang := ds.Lang{
+		Name:        req.Name,
+		Family:      req.Family,
+		Subgroup:    req.Subgroup,
+		Description: req.Description,
+	}
+	if err := h.Repository.CreateLang(&lang); err != nil {
+		h.errorHandler(c, http.StatusInternalServerError, err)
+		return
+	}
+	c.JSON(http.StatusCreated, lang)
 }

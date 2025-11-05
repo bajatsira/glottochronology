@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"time"
 
+	"LAB1/internal/app/auth"
 	"LAB1/internal/app/ds"
 
 	"github.com/sirupsen/logrus"
@@ -13,6 +14,7 @@ import (
 	"gorm.io/gorm/clause"
 )
 
+/*
 func (r *Repository) GetLangs() ([]ds.Lang, error) {
 	var langs []ds.Lang
 	err := r.db.Find(&langs).Error
@@ -43,13 +45,48 @@ func (r *Repository) GetLangsByName(name string) ([]ds.Lang, error) {
 		return nil, err
 	}
 	return langs, nil
+}*/
+
+// заменяет старую реализацию GetLangs
+func (r *Repository) GetLangs() ([]ds.Lang, error) {
+	var langs []ds.Lang
+	// фильтруем удалённые через статус
+	err := r.db.Where("status <> ?", "удалён").Find(&langs).Error
+	if err != nil {
+		return nil, err
+	}
+	if len(langs) == 0 {
+		return nil, fmt.Errorf("массив пустой")
+	}
+	return langs, nil
+}
+
+// заменяет старую реализацию GetLang (по id) — также исключаем удалённые
+func (r *Repository) GetLang(id int) (ds.Lang, error) {
+	lang := ds.Lang{}
+	err := r.db.Where("id = ? AND status <> ?", id, "удалён").First(&lang).Error
+	if err != nil {
+		return ds.Lang{}, err
+	}
+	return lang, nil
+}
+
+// заменяет старую реализацию GetLangsByName — поиск по имени + исключение удалённых
+func (r *Repository) GetLangsByName(name string) ([]ds.Lang, error) {
+	var langs []ds.Lang
+	err := r.db.Where("name ILIKE ? AND status <> ?", "%"+name+"%", "удалён").Find(&langs).Error
+	if err != nil {
+		return nil, err
+	}
+	return langs, nil
 }
 
 func (r *Repository) GetLangCount() int64 {
 	var glottoID uint
 	var count int64
-	ResearcherID := 1 // пока захардкодили, позже будет из JWT
+	//ResearcherID := 1 // пока захардкодили, позже будет из JWT
 
+	ResearcherID := auth.GetCreatorID()
 	// Находим текущий черновик заявки исследователя
 	err := r.db.Model(&ds.Glotto{}).
 		Where("researcher_id = ? AND status = ?", ResearcherID, "черновик").
@@ -238,4 +275,17 @@ func (r *Repository) GetGlottoByID(id uint) (ds.Glotto, error) {
 		return ds.Glotto{}, err
 	}
 	return g, nil
+}
+
+func (r *Repository) CreateLang(l *ds.Lang) error {
+	return r.db.Create(l).Error
+}
+
+func (r *Repository) UpdateLang(id uint, updates map[string]interface{}) error {
+	return r.db.Model(&ds.Lang{}).Where("id = ?", id).Updates(updates).Error
+}
+
+func (r *Repository) DeleteLang(id uint) error {
+	// здесь только DB-удаление или флаг? Требование: "Удаление изображения встроено в метод удаления услуги"
+	return r.db.Delete(&ds.Lang{}, id).Error
 }

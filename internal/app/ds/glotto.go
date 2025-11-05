@@ -35,8 +35,10 @@ type Lang struct {
 	Family        string `gorm:"column:family"`
 	Subgroup      string `gorm:"column:subgroup"`
 	WritingFamily string `gorm:"type:varchar(50)"`
+	Status        string `gorm:"column:status;default:'активен'"` // для удаления языка
 
 	Description string `gorm:"column:description"`
+	PhotoKey    string `gorm:"column:photo_key"`
 }
 
 func (Lang) TableName() string {
