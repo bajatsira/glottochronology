@@ -34,36 +34,36 @@ func (h *Handler) RegisterHandler(router *gin.Engine) {
 	api := router.Group("/api")
 
 	// --- Домен Услуги (Lang) ---
-	api.GET("/languages", h.ApiGetLangs)    // GET список услуг (с фильтрацией)
-	api.GET("/languages/:id", h.ApiGetLang) // GET одна услуга
-	// api.POST("/languages", h.ApiCreateLang)               // POST добавить новую услугу (без изображения)
-	api.PUT("/languages/:id", h.ApiUpdateLang)                    // PUT изменить услугу
-	api.DELETE("/languages/:id", h.ApiDeleteLang)                 // DELETE удалить услугу (+удаление изображения)
-	api.POST("/languages/:id/image", h.ApiUploadLangImage)        // POST добавить/заменить изображение услуги (Minio)
-	api.POST("/glottos/add/:language_id", h.ApiAddServiceToDraft) // POST добавить услугу в заявку-черновик
+	api.GET("/languages", h.ApiGetLangs)                   // GET список услуг (с фильтрацией)
+	api.GET("/languages/:id", h.ApiGetLang)                // GET одна услуга
+	api.POST("/languages", h.ApiCreateLang)                // POST добавить новую услугу (без изображения)
+	api.PUT("/languages/:id", h.ApiUpdateLang)             // PUT изменить услугу
+	api.DELETE("/languages/:id", h.ApiDeleteLang)          // DELETE удалить услугу (+удаление изображения)
+	api.POST("/languages/:id/image", h.ApiUploadLangImage) // POST добавить/заменить изображение услуги (Minio)
+	//api.POST("/glottos/add/:language_id", h.ApiAddServiceToDraft) // POST добавить услугу в заявку-черновик
 
 	// --- Домен Заявки (Glotto) ---
 	api.GET("/glottos", h.ApiGetGlottos)                  // GET список заявок (фильтр по статусу и дате)
 	api.GET("/glottos/:id", h.ApiGetGlotto)               // GET одна заявка с услугами
-	api.GET("/glottos/cart", h.ApiGetCartIcon)            // GET иконка корзины (черновик и кол-во услуг)
+	api.GET("/glottos/cart", h.ApiGetCartIcon)            //не работает из-за минио           // GET иконка корзины (черновик и кол-во услуг)
 	api.PUT("/glottos/:id", h.ApiUpdateGlotto)            // PUT изменить поля заявки
 	api.PUT("/glottos/:id/form", h.ApiFormGlotto)         // PUT сформировать заявку (создатель)
 	api.PUT("/glottos/:id/complete", h.ApiCompleteGlotto) // PUT завершить/отклонить заявку (модератор)
 	api.DELETE("/glottos/:id", h.ApiDeleteGlotto)         // DELETE удалить заявку (создатель)
 
 	// --- Домен m-m (GlottoLanguage) ---
-	api.POST("/glottos/:id/services", h.ApiAddServiceToGlotto)        // POST добавить услугу в заявку (m-m)
-	api.PUT("/glottos/:id/services", h.ApiUpdateServiceInGlotto)      // PUT изменить параметры связи (m-m)
-	api.DELETE("/glottos/:id/services", h.ApiDeleteServiceFromGlotto) // DELETE удалить услугу из заявки (m-m)
+	api.POST("/glottos/:id/langs", h.ApiAddServiceToGlotto)        // POST добавить услугу в заявку (m-m)
+	api.PUT("/glottos/:id/langs", h.ApiUpdateServiceInGlotto)      // PUT изменить параметры связи (m-m)
+	api.DELETE("/glottos/:id/langs", h.ApiDeleteServiceFromGlotto) // DELETE удалить услугу из заявки (m-m)
+	/*
+		// --- Домен Пользователь ---
+		api.POST("/users/register", h.ApiRegisterUser) // POST регистрация нового пользователя
+		api.GET("/users/me", h.ApiGetCurrentUser)      // GET данные текущего пользователя
+		api.PUT("/users/me", h.ApiUpdateCurrentUser)   // PUT обновить данные пользователя
 
-	// --- Домен Пользователь ---
-	api.POST("/users/register", h.ApiRegisterUser) // POST регистрация нового пользователя
-	api.GET("/users/me", h.ApiGetCurrentUser)      // GET данные текущего пользователя
-	api.PUT("/users/me", h.ApiUpdateCurrentUser)   // PUT обновить данные пользователя
-
-	// --- Домен Аутентификация ---
-	api.POST("/auth/login", h.ApiLogin)   // POST аутентификация
-	api.POST("/auth/logout", h.ApiLogout) // POST деавторизация
+		// --- Домен Аутентификация ---
+		api.POST("/auth/login", h.ApiLogin)   // POST аутентификация
+		api.POST("/auth/logout", h.ApiLogout) // POST деавторизация*/
 
 }
 

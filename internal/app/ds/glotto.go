@@ -58,7 +58,7 @@ func (GlottoLanguage) TableName() string {
 	return "glotto_languages"
 }
 
-type Glotto struct {
+type LangCalculation struct {
 	ID             uint      `gorm:"primaryKey;column:id"`
 	Status         string    `gorm:"column:status"`
 	BaseLanguageID uint      `gorm:"column:base_language_id"`
@@ -73,6 +73,6 @@ type Glotto struct {
 	Languages []GlottoLanguage `gorm:"foreignKey:GlottoID;references:ID"`
 }
 
-func (Glotto) TableName() string {
+func (LangCalculation) TableName() string {
 	return "glottos"
 }

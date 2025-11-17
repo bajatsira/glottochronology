@@ -182,6 +182,7 @@ func (h *Handler) GetDraftByID(ctx *gin.Context) {
 	})
 }
 
+/*
 // ApiGetLangs - возвращает JSON список языков, поддерживает query=name и optional filters
 func (h *Handler) ApiGetLangs(c *gin.Context) {
 	q := c.Query("query")
@@ -197,17 +198,64 @@ func (h *Handler) ApiGetLangs(c *gin.Context) {
 		return
 	}
 	c.JSON(http.StatusOK, langs)
+}*/
+
+// === POST /api/languages ===
+func (h *Handler) CreateLanguage(c *gin.Context) {
+	var lang ds.Lang
+	if err := c.ShouldBindJSON(&lang); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid data"})
+		return
+	}
+
+	if err := h.Repository.CreateLanguage(&lang); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusCreated, lang)
 }
 
-type CreateLangRequest struct {
+/*
+// === PUT /api/languages/:id ===
+func (h *Handler) UpdateLanguage(c *gin.Context) {
+	id, _ := strconv.Atoi(c.Param("id"))
+	var lang ds.Lang
+	if err := c.ShouldBindJSON(&lang); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid data"})
+		return
+	}
+	lang.ID = uint(id)
+
+	if err := h.Repository.UpdateLanguage(&lang); err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "Language not found"})
+		return
+	}
+
+	c.JSON(http.StatusOK, lang)
+}*/
+
+// === DELETE /api/languages/:id ===
+func (h *Handler) DeleteLanguage(c *gin.Context) {
+	id, _ := strconv.Atoi(c.Param("id"))
+
+	if err := h.Repository.DeleteLanguage(uint(id)); err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "Language not found"})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"message": "Language deleted"})
+}
+
+/*type CreateLangRequest struct {
 	Name        string `json:"name" binding:"required"`
 	Family      string `json:"family"`
 	Subgroup    string `json:"subgroup"`
 	Description string `json:"description"`
-}
+}*/
 
 // ApiCreateLang
-func (h *Handler) ApiCreateLang(c *gin.Context) {
+/*func (h *Handler) ApiCreateLang(c *gin.Context) {
 	var req CreateLangRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
@@ -224,4 +272,4 @@ func (h *Handler) ApiCreateLang(c *gin.Context) {
 		return
 	}
 	c.JSON(http.StatusCreated, lang)
-}
+}*/

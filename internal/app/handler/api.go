@@ -1,10 +1,344 @@
 package handler
 
 import (
+	"fmt"
 	"net/http"
+	"path"
+	"strconv"
+	"time"
+
+	"LAB1/internal/app/ds"
+
+	"gorm.io/gorm"
+
+	//"LAB1/internal/app/repository"
+	"LAB1/internal/app/storage"
 
 	"github.com/gin-gonic/gin"
 )
+
+// NOTE: предполагается, что Handler уже содержит поле Repository *repository.Repository
+
+// ----------------- Lang (услуги) -----------------
+
+// ApiGetLangs - GET /api/languages?query=...
+func (h *Handler) ApiGetLangs(c *gin.Context) {
+	q := c.Query("query")
+	var langs []ds.Lang
+	var err error
+	if q == "" {
+		langs, err = h.Repository.GetLangs()
+	} else {
+		langs, err = h.Repository.GetLangsByName(q)
+	}
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, langs)
+}
+
+// ApiGetLang - GET /api/languages/:id
+func (h *Handler) ApiGetLang(c *gin.Context) {
+	idStr := c.Param("id")
+	id, err := strconv.Atoi(idStr)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid id"})
+		return
+	}
+	lang, err := h.Repository.GetLang(id)
+	if err != nil {
+		if gormErrNotFound(err) {
+			c.JSON(http.StatusNotFound, gin.H{"error": "not found"})
+			return
+		}
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, lang)
+}
+
+// ApiCreateLang - POST /api/languages
+func (h *Handler) ApiCreateLang(c *gin.Context) {
+	var body ds.Lang
+	if err := c.ShouldBindJSON(&body); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+	if err := h.Repository.CreateLang(&body); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusCreated, body)
+}
+
+// ApiUpdateLang - PUT /api/languages/:id
+func (h *Handler) ApiUpdateLang(c *gin.Context) {
+	idStr := c.Param("id")
+	id, err := strconv.Atoi(idStr)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid id"})
+		return
+	}
+	var updates map[string]interface{}
+	if err := c.ShouldBindJSON(&updates); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+	if err := h.Repository.UpdateLang(uint(id), updates); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	lang, _ := h.Repository.GetLang(id)
+	c.JSON(http.StatusOK, lang)
+}
+
+// ApiDeleteLang - PUT/DELETE logical delete -> status = 'удалён'
+func (h *Handler) ApiDeleteLang(c *gin.Context) {
+	idStr := c.Param("id")
+	id, err := strconv.Atoi(idStr)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid id"})
+		return
+	}
+	if err := h.Repository.SoftDeleteLang(uint(id)); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"status": "удалён"})
+}
+
+// ApiUploadLangImage - POST /api/languages/:id/image (form file "file")
+func (h *Handler) ApiUploadLangImage(c *gin.Context) {
+	idStr := c.Param("id")
+	id, err := strconv.Atoi(idStr)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid id"})
+		return
+	}
+
+	file, header, err := c.Request.FormFile("file")
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "file required"})
+		return
+	}
+	defer file.Close()
+
+	// генерируем имя на латинице: lang_<id>_<ts><ext>
+	ext := path.Ext(header.Filename)
+	objectName := fmt.Sprintf("lang_%d_%d%s", id, time.Now().Unix(), ext)
+
+	minioClient, err := storage.NewMinio()
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "minio init: " + err.Error()})
+		return
+	}
+	if err := minioClient.Upload(c.Request.Context(), objectName, file, header.Size, header.Header.Get("Content-Type")); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "upload failed: " + err.Error()})
+		return
+	}
+
+	// обновим запись в БД (photo_key поле — добавь в ds.Lang если нужно)
+	_ = h.Repository.UpdateLang(uint(id), map[string]interface{}{"photo_key": objectName})
+
+	c.JSON(http.StatusOK, gin.H{"photo_key": objectName})
+}
+
+// ----------------- Glotto (заявки) -----------------
+
+// ApiGetGlottos - GET /api/glottos?status=&date_from=&date_to=
+func (h *Handler) ApiGetGlottos(c *gin.Context) {
+	status := c.Query("status")
+	df := c.Query("date_from") // yyyy-mm-dd
+	dt := c.Query("date_to")
+	var dateFrom, dateTo *time.Time
+	if df != "" {
+		t, err := time.Parse("2006-01-02", df)
+		if err == nil {
+			dateFrom = &t
+		}
+	}
+	if dt != "" {
+		t, err := time.Parse("2006-01-02", dt)
+		if err == nil {
+			dateTo = &t
+		}
+	}
+	glottos, err := h.Repository.GetGlottosFiltered(status, dateFrom, dateTo)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, glottos)
+}
+
+// ApiGetGlotto - GET /api/glottos/:id
+func (h *Handler) ApiGetGlotto(c *gin.Context) {
+	idStr := c.Param("id")
+	id, err := strconv.Atoi(idStr)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid id"})
+		return
+	}
+	g, err := h.Repository.GetGlottoByID(uint(id))
+	if err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, g)
+}
+
+// ApiGetCartIcon - GET /api/glottos/cart (черновик текущего пользователя)
+func (h *Handler) ApiGetCartIcon(c *gin.Context) {
+	// creator singleton: пока используем 1 (как в проекте)
+	researcherID := uint(1)
+	g, err := h.Repository.GetDraftByResearcher(researcherID)
+	if err != nil {
+		c.JSON(http.StatusOK, gin.H{"draft_id": nil, "count": 0})
+		return
+	}
+	// count:
+	count := h.Repository.GetLangCount()
+	c.JSON(http.StatusOK, gin.H{"draft_id": g.ID, "count": count})
+}
+
+// ApiAddServiceToGlotto (POST) — алиас на AddServiceToDraft
+func (h *Handler) ApiAddServiceToGlotto(c *gin.Context) {
+	langIDStr := c.Param("id")
+	langID, err := strconv.Atoi(langIDStr)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid id"})
+		return
+	}
+	researcherID := uint(1)
+	if err := h.Repository.AddServiceToDraft(researcherID, uint(langID)); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	c.Status(http.StatusNoContent)
+}
+
+// ApiUpdateServiceInGlotto — PUT /api/glottos/:id/services
+func (h *Handler) ApiUpdateServiceInGlotto(c *gin.Context) {
+	// пример: body { "language_id": 5, "value": "...", "position": 2 }
+	var body map[string]interface{}
+	if err := c.ShouldBindJSON(&body); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+	// реализуй логику по твоим данным — заглушка:
+	c.JSON(http.StatusOK, gin.H{"status": "ok", "updated": body})
+}
+
+// ApiDeleteServiceFromGlotto — DELETE /api/glottos/:id/services?language_id=5
+func (h *Handler) ApiDeleteServiceFromGlotto(c *gin.Context) {
+	glottoIDStr := c.Param("id")
+	glottoID, err := strconv.Atoi(glottoIDStr)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid id"})
+		return
+	}
+	langIDStr := c.Query("language_id")
+	langID, err := strconv.Atoi(langIDStr)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "language_id required"})
+		return
+	}
+	// raw SQL delete from glotto_languages where glotto_id = ? and language_id = ?
+	if err := h.Repository.DeleteGlottoLanguage(uint(glottoID), uint(langID)); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	c.Status(http.StatusNoContent)
+}
+
+// ApiUpdateGlotto — PUT /api/glottos/:id (изменение полей заявки)
+func (h *Handler) ApiUpdateGlotto(c *gin.Context) {
+	idStr := c.Param("id")
+	id, err := strconv.Atoi(idStr)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid id"})
+		return
+	}
+	var updates map[string]interface{}
+	if err := c.ShouldBindJSON(&updates); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+	// protection: не разрешать менять системные поля
+	delete(updates, "id")
+	delete(updates, "researcher_id")
+	delete(updates, "linguist_id")
+	delete(updates, "date_create")
+	delete(updates, "date_finish")
+	delete(updates, "status")
+	if err := h.Repository.UpdateGlotto(uint(id), updates); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	g, _ := h.Repository.GetGlottoByID(uint(id))
+	c.JSON(http.StatusOK, g)
+}
+
+// ApiFormGlotto — PUT /api/glottos/:id/form
+func (h *Handler) ApiFormGlotto(c *gin.Context) {
+	idStr := c.Param("id")
+	id, err := strconv.Atoi(idStr)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid id"})
+		return
+	}
+	researcherID := uint(1)
+	if err := h.Repository.FormGlotto(uint(id), researcherID); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+	c.Status(http.StatusNoContent)
+}
+
+// ApiCompleteGlotto — PUT /api/glottos/:id/complete with body { "action": "завершить"|"отклонить" }
+func (h *Handler) ApiCompleteGlotto(c *gin.Context) {
+	idStr := c.Param("id")
+	id, err := strconv.Atoi(idStr)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid id"})
+		return
+	}
+	var body struct {
+		Action string `json:"action"`
+	}
+	if err := c.ShouldBindJSON(&body); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+	moderatorID := uint(1) // заглушка — в реале из JWT
+	if err := h.Repository.CompleteGlotto(uint(id), moderatorID, body.Action); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+	c.Status(http.StatusNoContent)
+}
+
+// ApiDeleteGlotto — DELETE /api/glottos/:id
+func (h *Handler) ApiDeleteGlotto(c *gin.Context) {
+	idStr := c.Param("id")
+	id, err := strconv.Atoi(idStr)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid id"})
+		return
+	}
+	// логическое удаление через raw sql (есть метод DeleteDraftSQL)
+	if err := h.Repository.DeleteDraftSQL(uint(id)); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	c.Status(http.StatusNoContent)
+}
+
+// ----------------- Helpers -----------------
+func gormErrNotFound(err error) bool {
+	return err == gorm.ErrRecordNotFound || (err != nil && err.Error() == "record not found")
+}
 
 // ==========================
 // 🧩 Домен Услуги (Lang)
@@ -14,7 +348,7 @@ import (
 func (h *Handler) ApiGetLangs(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"message": "GET /api/languages"})
 }*/
-
+/*
 // GET /api/languages/:id — одна услуга
 func (h *Handler) ApiGetLang(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"message": "GET /api/languages/:id"})
@@ -25,7 +359,7 @@ func (h *Handler) ApiGetLang(c *gin.Context) {
 func (h *Handler) ApiCreateLang(c *gin.Context) {
 	c.JSON(http.StatusCreated, gin.H{"message": "POST /api/languages"})
 }
-*/
+
 // PUT /api/languages/:id — изменить услугу
 func (h *Handler) ApiUpdateLang(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"message": "PUT /api/languages/:id"})
@@ -136,3 +470,4 @@ func (h *Handler) ApiLogin(c *gin.Context) {
 func (h *Handler) ApiLogout(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"message": "POST /api/auth/logout"})
 }
+*/

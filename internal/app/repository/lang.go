@@ -14,6 +14,56 @@ import (
 	"gorm.io/gorm/clause"
 )
 
+// GetLangs — возвращает все языки, исключая status='удалён'
+func (r *Repository) GetLangs() ([]ds.Lang, error) {
+	var langs []ds.Lang
+	err := r.db.Where("status <> ? OR status IS NULL", "удалён").Find(&langs).Error
+	if err != nil {
+		return nil, err
+	}
+	if len(langs) == 0 {
+		return nil, fmt.Errorf("массив пустой")
+	}
+	return langs, nil
+}
+
+// GetLang — получить язык по id (только если не удалён)
+func (r *Repository) GetLang(id int) (ds.Lang, error) {
+	lang := ds.Lang{}
+	err := r.db.Where("id = ? AND (status <> ? OR status IS NULL)", id, "удалён").First(&lang).Error
+	if err != nil {
+		return ds.Lang{}, err
+	}
+	return lang, nil
+}
+
+// GetLangsByName — поиск по имени (исключаем удалённые)
+func (r *Repository) GetLangsByName(name string) ([]ds.Lang, error) {
+	var langs []ds.Lang
+	err := r.db.Where("name ILIKE ? AND (status <> ? OR status IS NULL)", "%"+name+"%", "удалён").Find(&langs).Error
+	if err != nil {
+		return nil, err
+	}
+	return langs, nil
+}
+
+// CreateLang — создать услугу (язык)
+func (r *Repository) CreateLang(l *ds.Lang) error {
+	return r.db.Create(l).Error
+}
+
+// UpdateLang — обновить поля услуги (карта полей)
+func (r *Repository) UpdateLang(id uint, updates map[string]interface{}) error {
+	return r.db.Model(&ds.Lang{}).Where("id = ? AND (status <> ? OR status IS NULL)", id, "удалён").Updates(updates).Error
+}
+
+// SoftDeleteLang — установить статус 'удалён'
+func (r *Repository) SoftDeleteLang(id uint) error {
+	return r.db.Model(&ds.Lang{}).Where("id = ?", id).Updates(map[string]interface{}{
+		"status": "удалён",
+	}).Error
+}
+
 /*
 func (r *Repository) GetLangs() ([]ds.Lang, error) {
 	var langs []ds.Lang
@@ -46,7 +96,7 @@ func (r *Repository) GetLangsByName(name string) ([]ds.Lang, error) {
 	}
 	return langs, nil
 }*/
-
+/*
 // заменяет старую реализацию GetLangs
 func (r *Repository) GetLangs() ([]ds.Lang, error) {
 	var langs []ds.Lang
@@ -70,16 +120,16 @@ func (r *Repository) GetLang(id int) (ds.Lang, error) {
 	}
 	return lang, nil
 }
-
+*/
 // заменяет старую реализацию GetLangsByName — поиск по имени + исключение удалённых
-func (r *Repository) GetLangsByName(name string) ([]ds.Lang, error) {
+/*func (r *Repository) GetLangsByName(name string) ([]ds.Lang, error) {
 	var langs []ds.Lang
 	err := r.db.Where("name ILIKE ? AND status <> ?", "%"+name+"%", "удалён").Find(&langs).Error
 	if err != nil {
 		return nil, err
 	}
 	return langs, nil
-}
+}*/
 
 func (r *Repository) GetLangCount() int64 {
 	var glottoID uint
@@ -88,7 +138,7 @@ func (r *Repository) GetLangCount() int64 {
 
 	ResearcherID := auth.GetCreatorID()
 	// Находим текущий черновик заявки исследователя
-	err := r.db.Model(&ds.Glotto{}).
+	err := r.db.Model(&ds.LangCalculation{}).
 		Where("researcher_id = ? AND status = ?", ResearcherID, "черновик").
 		Select("id").
 		First(&glottoID).Error
@@ -179,7 +229,7 @@ AddServiceToDraft:
 - защита от дублей через OnConflict DoNothing (UNIQUE (glotto_id, language_id))
 */
 func (r *Repository) AddServiceToDraft(researcherID uint, languageID uint) error {
-	var g ds.Glotto
+	var g ds.LangCalculation
 
 	// 1) попытаться найти существующий черновик
 	err := r.db.Where("researcher_id = ? AND status = ?", researcherID, "черновик").First(&g).Error
@@ -205,7 +255,7 @@ func (r *Repository) AddServiceToDraft(researcherID uint, languageID uint) error
 			return err
 		}*/
 		if errors.Is(err, gorm.ErrRecordNotFound) {
-			g = ds.Glotto{
+			g = ds.LangCalculation{
 				Status:         "черновик",
 				BaseLanguageID: languageID,
 				DateCreate:     time.Now(),
@@ -235,13 +285,13 @@ func (r *Repository) AddServiceToDraft(researcherID uint, languageID uint) error
 }
 
 // GetDraftByResearcher — получает черновик с подгрузкой языков (и самих Lang)
-func (r *Repository) GetDraftByResearcher(researcherID uint) (ds.Glotto, error) {
-	var g ds.Glotto
+func (r *Repository) GetDraftByResearcher(researcherID uint) (ds.LangCalculation, error) {
+	var g ds.LangCalculation
 	err := r.db.Preload("Languages.Language").
 		Where("researcher_id = ? AND status = ?", researcherID, "черновик").
 		First(&g).Error
 	if err != nil {
-		return ds.Glotto{}, err
+		return ds.LangCalculation{}, err
 	}
 	return g, nil
 }
@@ -253,39 +303,39 @@ func (r *Repository) DeleteDraftSQL(id uint) error {
 }
 
 // Пример альтернативного метода: получение glotto по ID с проверкой статуса (если нужно)
-func (r *Repository) GetDraftByID(id uint) (ds.Glotto, error) {
-	var g ds.Glotto
+func (r *Repository) GetDraftByID(id uint) (ds.LangCalculation, error) {
+	var g ds.LangCalculation
 	err := r.db.Preload("Languages.Language").First(&g, id).Error
 	if err != nil {
-		return ds.Glotto{}, err
+		return ds.LangCalculation{}, err
 	}
 
 	// если заявка удалена — считаем её недоступной
 	if g.Status == "удалён" {
-		return ds.Glotto{}, gorm.ErrRecordNotFound
+		return ds.LangCalculation{}, gorm.ErrRecordNotFound
 	}
 
 	return g, nil
 }
 
-func (r *Repository) GetGlottoByID(id uint) (ds.Glotto, error) {
-	var g ds.Glotto
+func (r *Repository) GetGlottoByID(id uint) (ds.LangCalculation, error) {
+	var g ds.LangCalculation
 	err := r.db.Preload("Languages.Language").First(&g, id).Error
 	if err != nil {
-		return ds.Glotto{}, err
+		return ds.LangCalculation{}, err
 	}
 	return g, nil
 }
 
-func (r *Repository) CreateLang(l *ds.Lang) error {
+func (r *Repository) CreateLanguage(l *ds.Lang) error {
 	return r.db.Create(l).Error
 }
 
-func (r *Repository) UpdateLang(id uint, updates map[string]interface{}) error {
+func (r *Repository) UpdateLanguage(id uint, updates map[string]interface{}) error {
 	return r.db.Model(&ds.Lang{}).Where("id = ?", id).Updates(updates).Error
 }
 
-func (r *Repository) DeleteLang(id uint) error {
+func (r *Repository) DeleteLanguage(id uint) error {
 	// здесь только DB-удаление или флаг? Требование: "Удаление изображения встроено в метод удаления услуги"
 	return r.db.Delete(&ds.Lang{}, id).Error
 }

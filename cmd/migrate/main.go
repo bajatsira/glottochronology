@@ -20,7 +20,7 @@ func main() {
 	// Migrate the schema
 	err = db.AutoMigrate(
 		&ds.Lang{},
-		&ds.Glotto{},
+		&ds.LangCalculation{},
 		&ds.Users{},
 		&ds.GlottoLanguage{},
 	)
