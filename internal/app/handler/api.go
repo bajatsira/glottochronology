@@ -7,6 +7,7 @@ import (
 	"strconv"
 	"time"
 
+	_ "LAB1/internal/app/auth"
 	"LAB1/internal/app/ds"
 
 	"gorm.io/gorm"
@@ -145,7 +146,7 @@ func (h *Handler) ApiUploadLangImage(c *gin.Context) {
 }
 
 // ----------------- Glotto (заявки) -----------------
-
+/*
 // ApiGetGlottos - GET /api/glottos?status=&date_from=&date_to=
 func (h *Handler) ApiGetGlottos(c *gin.Context) {
 	status := c.Query("status")
@@ -169,6 +170,53 @@ func (h *Handler) ApiGetGlottos(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
+	c.JSON(http.StatusOK, glottos)
+}
+*/
+
+func (h *Handler) ApiGetGlottos(c *gin.Context) {
+
+	// 1. Извлекаем пользователя из контекста
+	v, exists := c.Get(CtxUserKey)
+
+	// currentUser — указатель, может быть nil
+	var currentUser *CurrentUser
+	if exists {
+		currentUser = v.(*CurrentUser) // ← ВАЖНО: тип *CurrentUser
+	}
+
+	status := c.Query("status")
+
+	// -------------------------
+	// 2. Модератор → видит все
+	// -------------------------
+	if currentUser != nil && currentUser.IsModerator {
+		glottos, err := h.Repository.GetGlottosFiltered(status, nil, nil)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			return
+		}
+		c.JSON(http.StatusOK, glottos)
+		return
+	}
+
+	// ---------------------------------------------------
+	// 3. Гость (нет авторизации) → 401 Unauthorized
+	// ---------------------------------------------------
+	if currentUser == nil {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "authentication required"})
+		return
+	}
+
+	// ---------------------------------------------------------
+	// 4. Создатель → получает только свои собственные заявки
+	// ---------------------------------------------------------
+	glottos, err := h.Repository.GetLangCalculationsByResearcher(currentUser.ID, status)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
 	c.JSON(http.StatusOK, glottos)
 }
 
@@ -316,6 +364,68 @@ func (h *Handler) ApiCompleteGlotto(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
+	c.Status(http.StatusNoContent)
+}
+
+// @Summary Завершить или отклонить расчёт языкового родства (только модератор)
+// @Tags lang-calculation
+// @Security BearerAuth
+// @Accept json
+// @Produce json
+// @Param id path int true "ID расчёта"
+// @Param body body CompleteLangCalculationRequest true "Действие"
+// @Success 204
+// @Failure 400,401,403,404 {object} map[string]string
+// @Router /api/lang-calculations/{id}/complete [put]
+func (h *Handler) ApiCompleteLangCalculation(c *gin.Context) {
+	// 1. Получаем ID расчёта из пути
+	idStr := c.Param("id")
+	id, err := strconv.Atoi(idStr)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid calculation id"})
+		return
+	}
+
+	// 2. Парсим тело: action должен быть "завершить" или "отклонить"
+	var body struct {
+		Action string `json:"action" binding:"required,oneof=завершить отклонить"`
+	}
+	if err := c.ShouldBindJSON(&body); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "action is required and must be 'завершить' or 'отклонить'"})
+		return
+	}
+
+	// 3. Получаем текущего пользователя из middleware
+	userIDRaw, exists := c.Get("user_id")
+	if !exists {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "authentication required"})
+		return
+	}
+
+	isModeratorRaw, exists := c.Get("is_moderator")
+	if !exists || !isModeratorRaw.(bool) {
+		c.JSON(http.StatusForbidden, gin.H{"error": "only moderator can complete calculation"})
+		return
+	}
+
+	moderatorID := userIDRaw.(uint)
+
+	// 4. Вызываем метод репозитория (переименованный под новую сущность)
+	err = h.Repository.CompleteLangCalculation(uint(id), moderatorID, body.Action)
+	if err != nil {
+		// Можно более детально обрабатывать ошибки, если хочешь
+		switch err.Error() {
+		case "calculation not found":
+			c.JSON(http.StatusNotFound, gin.H{"error": "расчёт не найден"})
+		case "invalid status transition":
+			c.JSON(http.StatusBadRequest, gin.H{"error": "расчёт можно завершить только в статусе 'на модерации'"})
+		default:
+			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		}
+		return
+	}
+
+	// 5. Успешно — ничего не возвращаем
 	c.Status(http.StatusNoContent)
 }
 
