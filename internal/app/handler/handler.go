@@ -4,7 +4,6 @@ import (
 	"LAB1/internal/app/repository"
 
 	"github.com/gin-gonic/gin"
-	"github.com/sirupsen/logrus"
 )
 
 type Handler struct {
@@ -17,7 +16,6 @@ func NewHandler(r *repository.Repository) *Handler {
 	}
 }
 
-// RegisterHandler Функция, в которой мы отдельно регистрируем маршруты, чтобы не писать все в одном месте
 func (h *Handler) RegisterHandler(router *gin.Engine) {
 	//router.GET("/", h.GetOrders)
 	//router.GET("/order/:id", h.GetOrder)
@@ -43,27 +41,27 @@ func (h *Handler) RegisterHandler(router *gin.Engine) {
 	//api.POST("/glottos/add/:language_id", h.ApiAddServiceToDraft) // POST добавить услугу в заявку-черновик
 
 	// --- Домен Заявки (LangCalculation) ---
-	api.GET("/LangCalculation", h.ApiGetGlottos)                  // GET список заявок (фильтр по статусу и дате)
-	api.GET("/LangCalculation/:id", h.ApiGetGlotto)               // GET одна заявка с услугами
-	api.GET("/LangCalculation/cart", h.ApiGetCartIcon)            //не работает из-за минио           // GET иконка корзины (черновик и кол-во услуг)
-	api.PUT("/LangCalculation/:id", h.ApiUpdateGlotto)            // PUT изменить поля заявки
-	api.PUT("/LangCalculation/:id/form", h.ApiFormGlotto)         // PUT сформировать заявку (создатель)
-	api.PUT("/LangCalculation/:id/complete", h.ApiCompleteGlotto) // PUT завершить/отклонить заявку (модератор)
-	api.DELETE("/LangCalculation/:id", h.ApiDeleteGlotto)         // DELETE удалить заявку (создатель)
+	api.GET("/lang-calculation", h.ApiGetGlottos)                  // GET список заявок (фильтр по статусу и дате)
+	api.GET("/lang-calculation/:id", h.ApiGetGlotto)               // GET одна заявка с услугами
+	api.GET("/lang-calculation/cart", h.ApiGetCartIcon)            //не работает из-за минио           // GET иконка корзины (черновик и кол-во услуг)
+	api.PUT("/lang-calculation/:id", h.ApiUpdateGlotto)            // PUT изменить поля заявки
+	api.PUT("/lang-calculation/:id/form", h.ApiFormGlotto)         // PUT сформировать заявку (создатель)
+	api.PUT("/lang-calculation/:id/complete", h.ApiCompleteGlotto) // PUT завершить/отклонить заявку (модератор)
+	api.DELETE("/lang-calculation/:id", h.ApiDeleteGlotto)         // DELETE удалить заявку (создатель)
 
 	// --- Домен m-m (GlottoLanguage) ---
-	api.POST("/LangCalculation/:id/langs", h.ApiAddServiceToGlotto)        // POST добавить услугу в заявку (m-m)
-	api.PUT("/LangCalculation/:id/langs", h.ApiUpdateServiceInGlotto)      // PUT изменить параметры связи (m-m)
-	api.DELETE("/LangCalculation/:id/langs", h.ApiDeleteServiceFromGlotto) // DELETE удалить услугу из заявки (m-m)
-	/*
-		// --- Домен Пользователь ---
-		api.POST("/users/register", h.ApiRegisterUser) // POST регистрация нового пользователя
-		api.GET("/users/me", h.ApiGetCurrentUser)      // GET данные текущего пользователя
-		api.PUT("/users/me", h.ApiUpdateCurrentUser)   // PUT обновить данные пользователя
+	api.POST("/lang-calculation/:id/langs", h.ApiAddServiceToGlotto)        // POST добавить услугу в заявку (m-m)
+	api.PUT("/lang-calculation/:id/langs", h.ApiUpdateServiceInGlotto)      // PUT изменить параметры связи (m-m)
+	api.DELETE("/lang-calculation/:id/langs", h.ApiDeleteServiceFromGlotto) // DELETE удалить услугу из заявки (m-m)
 
-		// --- Домен Аутентификация ---
-		api.POST("/auth/login", h.ApiLogin)   // POST аутентификация
-		api.POST("/auth/logout", h.ApiLogout) // POST деавторизация*/
+	// --- Домен Пользователь ---
+	api.POST("/users/register", h.ApiRegisterUser) // POST регистрация нового пользователя
+	api.GET("/users/me", h.ApiGetCurrentUser)      // GET данные текущего пользователя
+	api.PUT("/users/me", h.ApiUpdateCurrentUser)   // PUT обновить данные пользователя
+
+	// --- Домен Аутентификация ---
+	api.POST("/auth/login", h.ApiLogin)   // POST аутентификация
+	api.POST("/auth/logout", h.ApiLogout) // POST деавторизация*/
 
 }
 
@@ -78,6 +76,7 @@ func (h *Handler) RegisterStatic(router *gin.Engine) {
 
 }
 
+/*
 // errorHandler для более удобного вывода ошибок
 func (h *Handler) errorHandler(ctx *gin.Context, errorStatusCode int, err error) {
 	logrus.Error(err.Error())

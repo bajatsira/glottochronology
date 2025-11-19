@@ -18,10 +18,6 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-// NOTE: предполагается, что Handler уже содержит поле Repository *repository.Repository
-
-// ----------------- Lang (услуги) -----------------
-
 // ApiGetLangs - GET /api/languages?query=...
 func (h *Handler) ApiGetLangs(c *gin.Context) {
 	q := c.Query("query")
@@ -139,13 +135,12 @@ func (h *Handler) ApiUploadLangImage(c *gin.Context) {
 		return
 	}
 
-	// обновим запись в БД (photo_key поле — добавь в ds.Lang если нужно)
 	_ = h.Repository.UpdateLang(uint(id), map[string]interface{}{"photo_key": objectName})
 
 	c.JSON(http.StatusOK, gin.H{"photo_key": objectName})
 }
 
-// ----------------- Glotto (заявки) -----------------
+// otto (заявки)
 /*
 // ApiGetGlottos - GET /api/glottos?status=&date_from=&date_to=
 func (h *Handler) ApiGetGlottos(c *gin.Context) {
@@ -190,7 +185,7 @@ func (h *Handler) ApiGetGlottos(c *gin.Context) {
 	// -------------------------
 	// 2. Модератор → видит все
 	// -------------------------
-	if currentUser != nil && currentUser.IsModerator {
+	if currentUser != nil && currentUser.IsLinguist {
 		glottos, err := h.Repository.GetGlottosFiltered(status, nil, nil)
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
@@ -367,65 +362,44 @@ func (h *Handler) ApiCompleteGlotto(c *gin.Context) {
 	c.Status(http.StatusNoContent)
 }
 
-// @Summary Завершить или отклонить расчёт языкового родства (только модератор)
-// @Tags lang-calculation
+// @Security CookieAuth
 // @Security BearerAuth
-// @Accept json
-// @Produce json
-// @Param id path int true "ID расчёта"
-// @Param body body CompleteLangCalculationRequest true "Действие"
-// @Success 204
-// @Failure 400,401,403,404 {object} map[string]string
-// @Router /api/lang-calculations/{id}/complete [put]
+// @Description Только лингвист может завершать заявку
+// @Router /api/glottos/{id}/complete [put]
 func (h *Handler) ApiCompleteLangCalculation(c *gin.Context) {
 	// 1. Получаем ID расчёта из пути
 	idStr := c.Param("id")
 	id, err := strconv.Atoi(idStr)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid calculation id"})
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid id"})
 		return
 	}
 
-	// 2. Парсим тело: action должен быть "завершить" или "отклонить"
 	var body struct {
-		Action string `json:"action" binding:"required,oneof=завершить отклонить"`
+		Action string `json:"action"`
 	}
 	if err := c.ShouldBindJSON(&body); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "action is required and must be 'завершить' or 'отклонить'"})
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
 
-	// 3. Получаем текущего пользователя из middleware
-	userIDRaw, exists := c.Get("user_id")
-	if !exists {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "authentication required"})
+	v, ok := c.Get(CtxUserKey)
+	if !ok || v == nil {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "auth required"})
+		return
+	}
+	current := v.(*CurrentUser)
+
+	if !current.IsLinguist {
+		c.JSON(http.StatusForbidden, gin.H{"error": "linguist required"})
 		return
 	}
 
-	isModeratorRaw, exists := c.Get("is_moderator")
-	if !exists || !isModeratorRaw.(bool) {
-		c.JSON(http.StatusForbidden, gin.H{"error": "only moderator can complete calculation"})
+	if err := h.Repository.CompleteGlotto(uint(id), current.ID, body.Action); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
 
-	moderatorID := userIDRaw.(uint)
-
-	// 4. Вызываем метод репозитория (переименованный под новую сущность)
-	err = h.Repository.CompleteLangCalculation(uint(id), moderatorID, body.Action)
-	if err != nil {
-		// Можно более детально обрабатывать ошибки, если хочешь
-		switch err.Error() {
-		case "calculation not found":
-			c.JSON(http.StatusNotFound, gin.H{"error": "расчёт не найден"})
-		case "invalid status transition":
-			c.JSON(http.StatusBadRequest, gin.H{"error": "расчёт можно завершить только в статусе 'на модерации'"})
-		default:
-			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
-		}
-		return
-	}
-
-	// 5. Успешно — ничего не возвращаем
 	c.Status(http.StatusNoContent)
 }
 
@@ -445,14 +419,10 @@ func (h *Handler) ApiDeleteGlotto(c *gin.Context) {
 	c.Status(http.StatusNoContent)
 }
 
-// ----------------- Helpers -----------------
 func gormErrNotFound(err error) bool {
 	return err == gorm.ErrRecordNotFound || (err != nil && err.Error() == "record not found")
 }
 
-// ==========================
-// 🧩 Домен Услуги (Lang)
-// ==========================
 /*
 // GET /api/languages — список услуг (с фильтрацией)
 func (h *Handler) ApiGetLangs(c *gin.Context) {
@@ -490,9 +460,7 @@ func (h *Handler) ApiAddServiceToDraft(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"message": "POST /api/glottos/add/:language_id"})
 }
 
-// ==========================
-// 🧾 Домен Заявки (Glotto)
-// ==========================
+
 
 // GET /api/glottos — список заявок (фильтр по статусу и дате)
 func (h *Handler) ApiGetGlottos(c *gin.Context) {
@@ -529,9 +497,6 @@ func (h *Handler) ApiDeleteGlotto(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"message": "DELETE /api/glottos/:id"})
 }
 
-// ==========================
-// 🔗 Домен m-m (GlottoLanguage)
-// ==========================
 
 // POST /api/glottos/:id/services — добавить услугу в заявку
 func (h *Handler) ApiAddServiceToGlotto(c *gin.Context) {
@@ -547,16 +512,13 @@ func (h *Handler) ApiUpdateServiceInGlotto(c *gin.Context) {
 func (h *Handler) ApiDeleteServiceFromGlotto(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"message": "DELETE /api/glottos/:id/services"})
 }
-
-// ==========================
-// 👤 Домен Пользователь
-// ==========================
-
+*/
+/*
 // POST /api/users/register — регистрация нового пользователя
 func (h *Handler) ApiRegisterUser(c *gin.Context) {
 	c.JSON(http.StatusCreated, gin.H{"message": "POST /api/users/register"})
 }
-
+*/
 // GET /api/users/me — получить данные текущего пользователя
 func (h *Handler) ApiGetCurrentUser(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"message": "GET /api/users/me"})
@@ -570,7 +532,7 @@ func (h *Handler) ApiUpdateCurrentUser(c *gin.Context) {
 // ==========================
 // 🔐 Домен Аутентификация
 // ==========================
-
+/*
 // POST /api/auth/login — аутентификация
 func (h *Handler) ApiLogin(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"message": "POST /api/auth/login"})
