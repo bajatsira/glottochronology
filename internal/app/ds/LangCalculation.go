@@ -45,17 +45,17 @@ func (Lang) TableName() string {
 	return "langs"
 }
 
-type GlottoLanguage struct {
-	ID         uint `gorm:"primaryKey;column:id"`
-	GlottoID   uint `gorm:"column:glotto_id"`
-	LanguageID uint `gorm:"column:language_id"`
-	IsBase     bool `gorm:"column:is_base"`
+type LangCalculationLanguage struct {
+	ID                uint `gorm:"primaryKey;column:id"`
+	LangCalculationID uint `gorm:"column:lang_calculation_id"`
+	LanguageID        uint `gorm:"column:language_id"`
+	IsBase            bool `gorm:"column:is_base"`
 
 	Language Lang `gorm:"foreignKey:LanguageID;references:ID"`
 }
 
-func (GlottoLanguage) TableName() string {
-	return "glotto_languages"
+func (LangCalculationLanguage) TableName() string {
+	return "lang_calculation_languages"
 }
 
 type LangCalculation struct {
@@ -70,9 +70,9 @@ type LangCalculation struct {
 	ResultYearsAgo int       `gorm:"column:result_years_ago"`
 	SimilarityRate float64   `gorm:"column:similarity_rate"`
 
-	Languages []GlottoLanguage `gorm:"foreignKey:GlottoID;references:ID"`
+	Languages []LangCalculationLanguage `gorm:"foreignKey:LangCalculationID;references:ID"`
 }
 
 func (LangCalculation) TableName() string {
-	return "glottos"
+	return "lang_calculation"
 }

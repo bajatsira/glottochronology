@@ -147,21 +147,21 @@ func (r *Repository) GetLangCount() int64 {
 	}
 
 	// Считаем количество языков в этой заявке
-	err = r.db.Model(&ds.GlottoLanguage{}).
-		Where("glotto_id = ?", glottoID).
+	err = r.db.Model(&ds.LangCalculationLanguage{}).
+		Where("lang_calculation_id = ?", glottoID).
 		Count(&count).Error
 	if err != nil {
-		logrus.Println("Error counting languages in glotto request:", err)
+		logrus.Println("Error counting languages in LangCalculation request:", err)
 	}
 
 	return count
 }
 
-func (r *Repository) GetLanguageByID(id int) (ds.GlottoLanguage, error) {
-	var language ds.GlottoLanguage
+func (r *Repository) GetLanguageByID(id int) (ds.LangCalculationLanguage, error) {
+	var language ds.LangCalculationLanguage
 	err := r.db.Preload("Language").First(&language, id).Error
 	if err != nil {
-		return ds.GlottoLanguage{}, err
+		return ds.LangCalculationLanguage{}, err
 	}
 	return language, nil
 }
@@ -270,10 +270,10 @@ func (r *Repository) AddServiceToDraft(researcherID uint, languageID uint) error
 	}
 
 	// 2) добавляем в m-m (glotto_languages), избегаем дублей
-	glLang := ds.GlottoLanguage{
-		GlottoID:   g.ID,
-		LanguageID: languageID,
-		IsBase:     false,
+	glLang := ds.LangCalculationLanguage{
+		LangCalculationID: g.ID,
+		LanguageID:        languageID,
+		IsBase:            false,
 	}
 
 	// Используем ON CONFLICT DO NOTHING (если уникальный индекс настроен на (glotto_id, language_id))
@@ -296,10 +296,30 @@ func (r *Repository) GetDraftByResearcher(researcherID uint) (ds.LangCalculation
 	return g, nil
 }
 
+/*
 // DeleteDraftSQL — логическое удаление заявки через raw SQL UPDATE (требование в методичке)
 func (r *Repository) DeleteDraftSQL(id uint) error {
 	query := `UPDATE glottos SET status = 'удалён', date_finish = NOW() WHERE id = $1`
 	return r.db.Exec(query, id).Error
+}*/
+
+// DeleteDraftSQL — логическое удаление заявки через raw SQL UPDATE (требование в методичке)
+func (r *Repository) DeleteDraftSQL(id uint) error {
+	query := `
+        UPDATE lang_calculation 
+        SET status = 'удалён', 
+            date_finish = NOW(), 
+            date_update = NOW() 
+        WHERE id = $1 
+    `
+	result := r.db.Exec(query, id)
+	if result.Error != nil {
+		return result.Error
+	}
+	if result.RowsAffected == 0 {
+		return gorm.ErrRecordNotFound // или кастомную ошибку "заявка не найдена или уже не черновик"
+	}
+	return nil
 }
 
 // Пример альтернативного метода: получение glotto по ID с проверкой статуса (если нужно)

@@ -107,7 +107,7 @@ func (h *Handler) AddLanguageToDraft(ctx *gin.Context) {
 func (h *Handler) GetDraft(ctx *gin.Context) {
 	researcherID := uint(1) // временно захардкодим
 
-	glotto, err := h.Repository.GetDraftByResearcher(researcherID)
+	LangCalculation, err := h.Repository.GetDraftByResearcher(researcherID)
 	if err != nil {
 		logrus.Error("Ошибка при получении черновика:", err)
 		ctx.JSON(http.StatusInternalServerError, gin.H{"error": "Не удалось получить черновик заявки"})
@@ -115,8 +115,8 @@ func (h *Handler) GetDraft(ctx *gin.Context) {
 	}
 
 	ctx.HTML(http.StatusOK, "chronos.html", gin.H{
-		"glotto":     glotto,
-		"cart_count": h.Repository.GetLangCount(),
+		"LangCalculation": LangCalculation,
+		"cart_count":      h.Repository.GetLangCount(),
 	})
 }
 
@@ -167,18 +167,18 @@ func (h *Handler) GetDraftByID(ctx *gin.Context) {
 	idStr := ctx.Param("id")
 	id, err := strconv.Atoi(idStr)
 	if err != nil {
-		ctx.HTML(http.StatusBadRequest, "404.html", nil)
+		ctx.Redirect(http.StatusFound, "/languages")
 		return
 	}
 
 	draft, err := h.Repository.GetGlottoByID(uint(id))
 	if err != nil {
-		ctx.HTML(http.StatusNotFound, "404.html", nil)
+		ctx.Redirect(http.StatusFound, "/languages")
 		return
 	}
 
 	ctx.HTML(http.StatusOK, "chronos.html", gin.H{
-		"glotto": draft,
+		"LangCalculation": draft,
 	})
 }
 

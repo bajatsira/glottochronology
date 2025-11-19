@@ -39,7 +39,7 @@ func (r *Repository) FormGlotto(id uint, researcherID uint) error {
 	}
 	// проверка: должно быть хотя бы 1 язык
 	var cnt int64
-	if err := r.db.Model(&ds.GlottoLanguage{}).Where("glotto_id = ?", id).Count(&cnt).Error; err != nil {
+	if err := r.db.Model(&ds.LangCalculationLanguage{}).Where("glotto_id = ?", id).Count(&cnt).Error; err != nil {
 		return err
 	}
 	if cnt == 0 {
@@ -80,7 +80,7 @@ func (r *Repository) CompleteGlotto(id uint, moderatorID uint, action string) er
 
 // DeleteGlottoLanguage — удалить связь glotto_languages по glotto_id + language_id
 func (r *Repository) DeleteGlottoLanguage(glottoID, languageID uint) error {
-	return r.db.Where("glotto_id = ? AND language_id = ?", glottoID, languageID).Delete(&ds.GlottoLanguage{}).Error
+	return r.db.Where("glotto_id = ? AND language_id = ?", glottoID, languageID).Delete(&ds.LangCalculationLanguage{}).Error
 }
 
 // UpdateGlotto — обновить поля glotto (без системных)

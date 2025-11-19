@@ -69,7 +69,7 @@
       <p class="card-family">{{ .Family }}</p>
       <div class="card-actions">
         <a href="/lang/{{ .ID }}" class="card-link">Подробнее</a>
-        <form action="/glotto/add/{{ .ID }}" method="POST" class="add-form">
+        <form action="/lang-calculation/add/{{ .ID }}" method="POST" class="add-form">
           <button type="submit" class="add-btn">Добавить в заявку</button>
         </form>
       </div>
@@ -82,7 +82,7 @@
 
    <div class="cart-icon">
        {{ if ne .cart_count 0 }}
-       <a href="/glotto/draft/{{ .draft_id }}">
+       <a href="/lang-calculation/draft/{{ .draft_id }}">
            <img src="/img/carticon.png" alt="Cart">
            <span class="cart-count">{{ .cart_count }}</span>
        </a>

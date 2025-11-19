@@ -22,7 +22,7 @@ func main() {
 		&ds.Lang{},
 		&ds.LangCalculation{},
 		&ds.Users{},
-		&ds.GlottoLanguage{},
+		&ds.LangCalculationLanguage{},
 	)
 	if err != nil {
 		panic("cant migrate db")

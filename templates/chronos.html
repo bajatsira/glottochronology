@@ -21,11 +21,11 @@
     <main>
         <h1>Заявка на анализ языков</h1>
 
-        {{ if .glotto.ID }}
+        {{ if .LangCalculation.ID }}
         <section>
             <h2>Базовый язык</h2>
             <div class="base-language">
-                {{ range .glotto.Languages }}
+                {{ range .LangCalculation.Languages }}
                     {{ if .IsBase }}
                     <div class="language-item">
                         <div class="language-checkbox">
@@ -44,7 +44,7 @@
 
             <h2>Языки для сравнения</h2>
             <div class="language-list">
-                {{ range .glotto.Languages }}
+                {{ range .LangCalculation.Languages }}
                     {{ if not .IsBase }}
                     <div class="language-item">
                         <div class="language-checkbox">
@@ -62,7 +62,7 @@
             </div>
         </section>
 
-        <form action="/glotto/delete/{{ .glotto.ID }}" method="POST" onsubmit="return confirm('Вы уверены, что хотите удалить заявку?');">
+        <form action="/LangCalculation/delete/{{ .LangCalculation.ID }}" method="POST" onsubmit="return confirm('Вы уверены, что хотите удалить заявку?');">
     <button type="submit" class="delete-button">Удалить заявку</button>
 </form>
 
@@ -75,12 +75,12 @@
 
         <div class="additional-fields">
             <div class="field-item comment-field">
-                <p>Комментарий</p>
-                <input class="field-input comment-input" type="text" name="comment" value="{{ .glotto.Comment }}">
+                <p>Языковая дивергенция</p>
+                <input class="field-input comment-input" type="text" name="comment" value="{{ .LangCalculation.SimilarityRate }}">
             </div>
             <div class="field-item result-field">
                 <p>Расхождение во времени</p>
-                <input class="field-input result-input" type="text" name="divergence" value="{{ .glotto.ResultYearsAgo.Int64 }}">
+                <input class="field-input result-input" type="text" name="divergence" value="{{ .LangCalculation.ResultYearsAgo.Int64 }}">
             </div>
         </div>
         
