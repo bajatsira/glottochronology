@@ -1,10 +1,12 @@
 package handler
 
 import (
+	"encoding/json"
 	"fmt"
 	"net/http"
 	"path"
 	"strconv"
+	"strings"
 	"time"
 
 	_ "LAB1/internal/app/auth"
@@ -354,8 +356,8 @@ func (h *Handler) ApiCompleteGlotto(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
-	moderatorID := uint(1) // заглушка — в реале из JWT
-	if err := h.Repository.CompleteGlotto(uint(id), moderatorID, body.Action); err != nil {
+	moderatorID := uint(1) // заглушка
+	if err := h.Repository.CompleteLangCalculation(uint(id), moderatorID, body.Action); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
@@ -395,7 +397,7 @@ func (h *Handler) ApiCompleteLangCalculation(c *gin.Context) {
 		return
 	}
 
-	if err := h.Repository.CompleteGlotto(uint(id), current.ID, body.Action); err != nil {
+	if err := h.Repository.CompleteLangCalculation(uint(id), current.ID, body.Action); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
@@ -421,6 +423,45 @@ func (h *Handler) ApiDeleteGlotto(c *gin.Context) {
 
 func gormErrNotFound(err error) bool {
 	return err == gorm.ErrRecordNotFound || (err != nil && err.Error() == "record not found")
+}
+
+func (h *Handler) UpdateLangLexiconForm(c *gin.Context) {
+	idStr := c.Param("id")
+	id, err := strconv.Atoi(idStr)
+	if err != nil {
+		c.String(http.StatusBadRequest, "invalid id")
+		return
+	}
+
+	csv := c.PostForm("lexicon_csv")
+	if csv == "" {
+		c.String(http.StatusBadRequest, "lexicon is empty")
+		return
+	}
+
+	parts := strings.Split(csv, ",")
+	var words []string
+	for _, p := range parts {
+		w := strings.TrimSpace(p)
+		if w != "" {
+			words = append(words, w)
+		}
+	}
+
+	b, err := json.Marshal(words)
+	if err != nil {
+		c.String(http.StatusInternalServerError, "marshal error")
+		return
+	}
+
+	if err := h.Repository.UpdateLang(uint(id), map[string]interface{}{
+		"lexicon": b,
+	}); err != nil {
+		c.String(http.StatusInternalServerError, "db error: "+err.Error())
+		return
+	}
+
+	c.Redirect(http.StatusSeeOther, "/lang/"+idStr)
 }
 
 /*

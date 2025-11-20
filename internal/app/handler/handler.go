@@ -28,6 +28,8 @@ func (h *Handler) RegisterHandler(router *gin.Engine) {
 	router.POST("/lang-calculation/add/:id", h.AddLanguageToDraft)
 	router.POST("/lang-calculation/delete/:id", h.DeleteGlotto) // логическое удаление заявки
 	router.GET("/lang-calculation/draft/:id", h.GetDraftByID)
+	router.POST("/languages/:id/lexicon", h.UpdateLangLexiconForm) //добавляб слова в заявку
+
 	// --- API маршруты ---
 	api := router.Group("/api")
 

@@ -21,6 +21,21 @@
     <h2>Ветвь: {{ .lang.Subgroup }}</h2>
     <h2>Письменность: {{ .lang.WritingFamily }}</h2>
     <h2>Списки Сводеша: {{ .lang.WritingFamily }}</h2>
+<h2>Список слов Сводеша</h2>
+
+<form action="/languages/{{ .lang.ID }}/lexicon" method="post">
+    <textarea name="lexicon_csv"
+              rows="6"
+              style="width:100%;"
+              placeholder="Введите слова через запятую">
+{{ if .lang.Lexicon }}
+{{/*здесь потом будет парсинг json для красивого отображения*/}}
+{{ end }}
+    </textarea>
+    <br><br>
+    <button type="submit">Сохранить список слов</button>
+</form>
+
    <form action="/lang-calculation/add/{{ .lang.ID }}" method="POST">
     <button type="submit">Добавить язык test</button>
 </form>

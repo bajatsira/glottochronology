@@ -26,6 +26,7 @@ type Glotto struct {
 package ds
 
 import (
+	"gorm.io/datatypes"
 	"time"
 )
 
@@ -37,8 +38,10 @@ type Lang struct {
 	WritingFamily string `gorm:"type:varchar(50)"`
 	Status        string `gorm:"column:status;default:'активен'"` // для удаления языка
 
-	Description string `gorm:"column:description"`
-	PhotoKey    string `gorm:"column:photo_key"`
+	Description string         `gorm:"column:description"`
+	PhotoKey    string         `gorm:"column:photo_key"`
+	Lexicon     datatypes.JSON `gorm:"column:lexicon"` // ← 100 слов
+
 }
 
 func (Lang) TableName() string {

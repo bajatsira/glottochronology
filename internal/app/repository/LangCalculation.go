@@ -1,11 +1,15 @@
 package repository
 
 import (
-	"errors"
+	_ "errors"
 	"fmt"
 	"time"
 
 	"LAB1/internal/app/ds"
+
+	"encoding/json"
+
+	"math"
 
 	"gorm.io/gorm"
 )
@@ -54,6 +58,7 @@ func (r *Repository) FormGlotto(id uint, researcherID uint) error {
 	}).Error
 }
 
+/* Ниже актуальная версия + переименовала глотто в langCalculation
 // CompleteGlotto — завершение/отклонение модератором; action = "завершить" или "отклонить"
 func (r *Repository) CompleteGlotto(id uint, moderatorID uint, action string) error {
 	var g ds.LangCalculation
@@ -73,12 +78,12 @@ func (r *Repository) CompleteGlotto(id uint, moderatorID uint, action string) er
 		updates["status"] = "отклонён"
 	} else {
 		updates["status"] = "завершён"
-		// Пример вычисления: similarity и result_years_ago (заглушки — замените формулой из лабы)
+		// Пример вычисления: similarity и result_years_ago
 		updates["similarity_rate"] = 0.0
 		updates["result_years_ago"] = 0
 	}
 	return r.db.Model(&ds.LangCalculation{}).Where("id = ?", id).Updates(updates).Error
-}
+}*/
 
 // DeleteGlottoLanguage — удалить связь glotto_languages по glotto_id + language_id
 func (r *Repository) DeleteGlottoLanguage(glottoID, languageID uint) error {
@@ -121,6 +126,105 @@ func (r *Repository) GetLangCalculationsByResearcher(researcherID uint, status s
 func (r *Repository) CompleteLangCalculation(id uint, moderatorID uint, action string) error {
 	var calc ds.LangCalculation
 
+	// Загружаем заявку вместе с выбранными языками
+	err := r.db.
+		Preload("Languages.Language").
+		First(&calc, id).Error
+
+	if err != nil {
+		return fmt.Errorf("calculation not found: %w", err)
+	}
+
+	// Разрешено завершать только сформированную заявку
+	if calc.Status != "сформирован" {
+		return fmt.Errorf("only 'сформирован' can be completed")
+	}
+
+	now := time.Now()
+
+	if action == "отклонить" {
+		return r.db.Model(&ds.LangCalculation{}).
+			Where("id = ?", id).
+			Updates(map[string]interface{}{
+				"status":      "отклонён",
+				"linguist_id": moderatorID,
+				"date_finish": now,
+				"date_update": now,
+			}).Error
+	}
+
+	// 1. Находим базовый язык
+	var baseLang *ds.Lang
+	var baseSwadesh []string
+
+	for _, lang := range calc.Languages {
+		if lang.IsBase {
+			baseLang = &lang.Language
+			break
+		}
+	}
+
+	if baseLang == nil {
+		return fmt.Errorf("base language not found")
+	}
+
+	// 2. Достаём список 100 слов
+	if err := json.Unmarshal(baseLang.Lexicon, &baseSwadesh); err != nil {
+		return fmt.Errorf("cannot parse swadesh list for base: %w", err)
+	}
+
+	totalMatches := 0
+	totalCompared := 0
+
+	// 3. Сравниваем остальные языки с базовым
+	for _, lc := range calc.Languages {
+		if lc.IsBase {
+			continue
+		}
+
+		var otherSwadesh []string
+		if err := json.Unmarshal(lc.Language.Lexicon, &otherSwadesh); err != nil {
+			return fmt.Errorf("cannot parse swadesh list for language %d: %w", lc.LanguageID, err)
+		}
+
+		if len(otherSwadesh) != len(baseSwadesh) {
+			return fmt.Errorf("swadesh list mismatch (expected %d words, got %d)",
+				len(baseSwadesh), len(otherSwadesh))
+		}
+
+		// считаем совпадения
+		for i := range baseSwadesh {
+			if baseSwadesh[i] == otherSwadesh[i] {
+				totalMatches++
+			}
+			totalCompared++
+		}
+	}
+
+	if totalCompared == 0 {
+		return fmt.Errorf("not enough languages to compare")
+	}
+
+	c := float64(totalMatches) / float64(totalCompared)
+	const lambda = 0.14
+	yearsAgo := -math.Log(c) / lambda
+
+	return r.db.Model(&ds.LangCalculation{}).
+		Where("id = ?", id).
+		Updates(map[string]interface{}{
+			"status":           "завершён",
+			"linguist_id":      moderatorID,
+			"date_finish":      now,
+			"date_update":      now,
+			"similarity_rate":  c,
+			"result_years_ago": int(yearsAgo),
+		}).Error
+}
+
+/*
+func (r *Repository) CompleteLangCalculation(id uint, moderatorID uint, action string) error {
+	var calc ds.LangCalculation
+
 	// Ищем расчёт и сразу проверяем статус
 	result := r.db.First(&calc, id)
 	if result.Error != nil {
@@ -140,6 +244,9 @@ func (r *Repository) CompleteLangCalculation(id uint, moderatorID uint, action s
 	if action == "завершить" {
 		calc.Status = "завершён"
 		calc.DateFinish = now
+
+
+
 	} else if action == "отклонить" {
 		calc.Status = "отклонён"
 	}
@@ -149,4 +256,40 @@ func (r *Repository) CompleteLangCalculation(id uint, moderatorID uint, action s
 	calc.DateUpdate = now
 
 	return r.db.Save(&calc).Error
+}*/
+
+func (r *Repository) GetLexicon(langID uint) ([]string, error) {
+	var lang ds.Lang
+	if err := r.db.First(&lang, langID).Error; err != nil {
+		return nil, err
+	}
+
+	var words []string
+	if err := json.Unmarshal(lang.Lexicon, &words); err != nil {
+		return nil, err
+	}
+
+	if len(words) != 100 {
+		return nil, fmt.Errorf("lexicon for lang %d must contain 100 words", langID)
+	}
+
+	return words, nil
+}
+
+func CompareLexicons(base []string, other []string) (matches int) {
+	for i := 0; i < 100; i++ {
+		if base[i] == other[i] {
+			matches++
+		}
+	}
+	return
+}
+
+func SwadeshYears(c float64) int {
+	lambda := 0.14
+	if c <= 0 {
+		return 5000 // защита от log(0)
+	}
+	t := -math.Log(c) / (2 * lambda)
+	return int(t * 1000)
 }
