@@ -5,6 +5,9 @@ import (
 	"strconv"
 	"time"
 
+	"encoding/json"
+	"strings"
+
 	//"errors"
 	//"gorm.io/gorm"
 
@@ -53,6 +56,16 @@ func (h *Handler) GetLang(ctx *gin.Context) {
 
 	ctx.HTML(http.StatusOK, "lang.html", gin.H{
 		"lang": lang,
+	})
+
+	var words []string
+	if len(lang.Lexicon) > 0 {
+		json.Unmarshal(lang.Lexicon, &words)
+	}
+
+	ctx.HTML(http.StatusOK, "lang.html", gin.H{
+		"lang":       lang,
+		"lexiconCSV": strings.Join(words, ", "),
 	})
 
 }
