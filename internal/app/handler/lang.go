@@ -41,22 +41,19 @@ func (h *Handler) GetLangs(ctx *gin.Context) {
 		"query": searchQuery, // передаем введенный запрос обратно на страницу
 	})
 }
-
 func (h *Handler) GetLang(ctx *gin.Context) {
 	idStr := ctx.Param("id")
-	id, err := strconv.Atoi(idStr) // преобразуем строку в int
+	id, err := strconv.Atoi(idStr)
 	if err != nil {
 		logrus.Error(err)
+		return
 	}
 
 	lang, err := h.Repository.GetLang(id)
 	if err != nil {
 		logrus.Error(err)
+		return
 	}
-
-	ctx.HTML(http.StatusOK, "lang.html", gin.H{
-		"lang": lang,
-	})
 
 	var words []string
 	if len(lang.Lexicon) > 0 {
@@ -67,7 +64,6 @@ func (h *Handler) GetLang(ctx *gin.Context) {
 		"lang":       lang,
 		"lexiconCSV": strings.Join(words, ", "),
 	})
-
 }
 
 func (h *Handler) GetLanguageById(ctx *gin.Context) {
