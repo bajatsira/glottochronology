@@ -341,8 +341,8 @@ func (h *Handler) ApiFormGlotto(c *gin.Context) {
 	c.Status(http.StatusNoContent)
 }
 
-// ApiCompleteGlotto — PUT /api/glottos/:id/complete with body { "action": "завершить"|"отклонить" }
-func (h *Handler) ApiCompleteGlotto(c *gin.Context) {
+// ApiCompleteGlotto — PUT /api/glottos/:id/complete with body { "action": "завершить"|"отклонить" } -- это для авторизации уже
+/*func (h *Handler) ApiCompleteGlotto(c *gin.Context) {
 	idStr := c.Param("id")
 	id, err := strconv.Atoi(idStr)
 	if err != nil {
@@ -361,6 +361,26 @@ func (h *Handler) ApiCompleteGlotto(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
+	c.Status(http.StatusNoContent)
+}*/
+
+func (h *Handler) ApiCompleteGlotto(c *gin.Context) {
+	idStr := c.Param("id")
+	id, err := strconv.Atoi(idStr)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid id"})
+		return
+	}
+
+	moderatorID := uint(1)
+
+	action := "завершить"
+
+	if err := h.Repository.CompleteLangCalculation(uint(id), moderatorID, action); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
 	c.Status(http.StatusNoContent)
 }
 

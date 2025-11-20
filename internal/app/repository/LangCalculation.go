@@ -293,3 +293,7 @@ func SwadeshYears(c float64) int {
 	t := -math.Log(c) / (2 * lambda)
 	return int(t * 1000)
 }
+
+func (r *Repository) DB() *gorm.DB {
+	return r.db
+}

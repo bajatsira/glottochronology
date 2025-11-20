@@ -28,7 +28,8 @@ func (h *Handler) RegisterHandler(router *gin.Engine) {
 	router.POST("/lang-calculation/add/:id", h.AddLanguageToDraft)
 	router.POST("/lang-calculation/delete/:id", h.DeleteGlotto) // логическое удаление заявки
 	router.GET("/lang-calculation/draft/:id", h.GetDraftByID)
-	router.POST("/languages/:id/lexicon", h.UpdateLangLexiconForm) //добавляб слова в заявку
+	router.POST("/languages/:id/lexicon", h.UpdateLangLexiconForm)   // добавляб слова в заявку
+	router.POST("/lang-calculation/set-base/:id", h.SetBaseLanguage) // выбор базового языка
 
 	// --- API маршруты ---
 	api := router.Group("/api")
@@ -43,13 +44,17 @@ func (h *Handler) RegisterHandler(router *gin.Engine) {
 	//api.POST("/glottos/add/:language_id", h.ApiAddServiceToDraft) // POST добавить услугу в заявку-черновик
 
 	// --- Домен Заявки (LangCalculation) ---
-	api.GET("/lang-calculation", h.ApiGetGlottos)                  // GET список заявок (фильтр по статусу и дате)
-	api.GET("/lang-calculation/:id", h.ApiGetGlotto)               // GET одна заявка с услугами
-	api.GET("/lang-calculation/cart", h.ApiGetCartIcon)            //не работает из-за минио           // GET иконка корзины (черновик и кол-во услуг)
-	api.PUT("/lang-calculation/:id", h.ApiUpdateGlotto)            // PUT изменить поля заявки
-	api.PUT("/lang-calculation/:id/form", h.ApiFormGlotto)         // PUT сформировать заявку (создатель)
+	api.GET("/lang-calculation", h.ApiGetGlottos)           // GET список заявок (фильтр по статусу и дате)
+	api.GET("/lang-calculation/:id", h.ApiGetGlotto)        // GET одна заявка с услугами
+	api.GET("/lang-calculation/cart", h.ApiGetCartIcon)     //не работает из-за минио           // GET иконка корзины (черновик и кол-во услуг)
+	api.PUT("/lang-calculation/:id", h.ApiUpdateGlotto)     // PUT изменить поля заявки
+	api.PUT("/lang-calculation/:id/form", h.ApiFormGlotto)  // PUT сформировать заявку (создатель)
+	api.POST("/lang-calculation/:id/form", h.ApiFormGlotto) // POST сформировать заявку (создатель)
+
 	api.PUT("/lang-calculation/:id/complete", h.ApiCompleteGlotto) // PUT завершить/отклонить заявку (модератор)
-	api.DELETE("/lang-calculation/:id", h.ApiDeleteGlotto)         // DELETE удалить заявку (создатель)
+	router.POST("/api/lang-calculation/:id/complete", h.ApiCompleteGlotto)
+
+	api.DELETE("/lang-calculation/:id", h.ApiDeleteGlotto) // DELETE удалить заявку (создатель)
 
 	// --- Домен m-m (GlottoLanguage) ---
 	api.POST("/lang-calculation/:id/langs", h.ApiAddServiceToGlotto)        // POST добавить услугу в заявку (m-m)

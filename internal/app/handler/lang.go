@@ -14,6 +14,8 @@ import (
 	"LAB1/internal/app/auth"
 	"LAB1/internal/app/ds"
 
+	//"LAB1/internal/app/repository"
+
 	"github.com/gin-gonic/gin"
 	"github.com/sirupsen/logrus"
 )
@@ -282,3 +284,23 @@ func (h *Handler) DeleteLanguage(c *gin.Context) {
 	}
 	c.JSON(http.StatusCreated, lang)
 }*/
+
+func (h *Handler) SetBaseLanguage(ctx *gin.Context) {
+	idStr := ctx.Param("id")
+	id, _ := strconv.ParseUint(idStr, 10, 64)
+
+	langIDStr := ctx.PostForm("language_id")
+	langID, _ := strconv.ParseUint(langIDStr, 10, 64)
+
+	// сбрасываем предыдущий базовый
+	h.Repository.DB().Model(&ds.LangCalculationLanguage{}).
+		Where("lang_calculation_id = ?", id).
+		Update("is_base", false)
+
+	// устанавливаем новый
+	h.Repository.DB().Model(&ds.LangCalculationLanguage{}).
+		Where("lang_calculation_id = ? AND language_id = ?", id, langID).
+		Update("is_base", true)
+
+	ctx.Redirect(302, "/lang-calculation/draft")
+}
