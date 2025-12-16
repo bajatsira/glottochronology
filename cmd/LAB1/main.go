@@ -18,6 +18,21 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
+// @title Language Annotation Backend API
+// @version 1.0
+// @description Расчет времени расхождения языков методом глоттохронологии.
+// @host localhost:8082
+// @BasePath /api
+
+// @securityDefinitions.apikey ApiKeyAuth
+// @in header
+// @name Authorization
+// @description Введите токен JWT (например: Bearer <token>)
+
+// @securityDefinitions.apikey CookieAuth
+// @in header
+// @name Cookie
+// @description Введите куку сессии (например: session_id=<value>)
 func main() {
 
 	err := godotenv.Load()
@@ -33,6 +48,11 @@ func main() {
 
 	/*if err := auth.InitRedis(os.Getenv("REDIS_ADDR")); err != nil {
 		logrus.Warnf("redis not initialized: %v", err)
+	}*/
+
+	// 2. Инициализация JWT (Закрытый/Открытый ключи) 🔑 <--- ЭТОТ БЛОК ДОБАВИТЬ
+	/*if err := auth.InitJWT(conf.JWT.PrivateKeyPath, conf.JWT.PublicKeyPath); err != nil { // <-- ИСПРАВЛЕНО: Теперь conf.JWT существует
+		logrus.Fatalf("error initializing JWT: %v", err)
 	}*/
 
 	if err := auth.InitRedis(os.Getenv("localhost:6379")); err != nil {

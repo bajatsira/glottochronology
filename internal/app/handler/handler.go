@@ -16,6 +16,7 @@ func NewHandler(r *repository.Repository) *Handler {
 	}
 }
 
+/*
 func (h *Handler) RegisterHandler(router *gin.Engine) {
 	//router.GET("/", h.GetOrders)
 	//router.GET("/order/:id", h.GetOrder)
@@ -68,8 +69,82 @@ func (h *Handler) RegisterHandler(router *gin.Engine) {
 
 	// --- Домен Аутентификация ---
 	api.POST("/auth/login", h.ApiLogin)   // POST аутентификация
-	api.POST("/auth/logout", h.ApiLogout) // POST деавторизация*/
+	api.POST("/auth/logout", h.ApiLogout) // POST деавторизация
 
+}*/
+
+func (h *Handler) RegisterHandler(router *gin.Engine) {
+
+	// 1. ПРИМЕНЕНИЕ ГЛОБАЛЬНОГО MIDDLEWARE АУТЕНТИФИКАЦИИ
+	// Он обрабатывает JWT и Cookie и устанавливает CurrentUser в контекст.
+	router.Use(AuthMiddleware(h.Repository))
+
+	// 2. SWAGGER ROUTE
+	//router.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
+
+	//router.GET("/", h.GetOrders)
+	//router.GET("/order/:id", h.GetOrder)
+
+	router.GET("/languages", h.GetLangs)
+	//r.GET("/order/:id", handler.GetOrder) // вот наш новый обработчик
+	router.GET("/lang/:id", h.GetLang)
+	//router.GET("/chronos", h.GetChronos)
+
+	// Эти фронтенд-маршруты требуют авторизации, так как работают с личными черновиками
+	router.GET("/lang-calculation/draft", RequireAuth(), h.GetDraft) // просмотр содержимого текущей заявки
+	router.POST("/lang-calculation/add/:id", RequireAuth(), h.AddLanguageToDraft)
+	router.POST("/lang-calculation/delete/:id", RequireAuth(), h.DeleteGlotto) // логическое удаление заявки
+	router.GET("/lang-calculation/draft/:id", RequireAuth(), h.GetDraftByID)
+	router.POST("/languages/:id/lexicon", RequireAuth(), h.UpdateLangLexiconForm)   // добавляб слова в заявку
+	router.POST("/lang-calculation/set-base/:id", RequireAuth(), h.SetBaseLanguage) // выбор базового языка
+
+	// --- API маршруты ---
+	api := router.Group("/api")
+
+	// --- Домен Услуги (Lang) ---
+	// GETs оставляем публичными, как "чтение-получение данных"
+	api.GET("/languages", h.ApiGetLangs)    // GET список услуг (с фильтрацией)
+	api.GET("/languages/:id", h.ApiGetLang) // GET одна услуга
+
+	// CRUD методы (Только для Модератора/Лингвиста)
+	api.POST("/languages", RequireLinguist(), h.ApiCreateLang)                // POST добавить новую услугу
+	api.PUT("/languages/:id", RequireLinguist(), h.ApiUpdateLang)             // PUT изменить услугу
+	api.DELETE("/languages/:id", RequireLinguist(), h.ApiDeleteLang)          // DELETE удалить услугу
+	api.POST("/languages/:id/image", RequireLinguist(), h.ApiUploadLangImage) // POST изображение
+
+	// --- Домен Заявки (LangCalculation) ---
+	// GET список заявок: закрыт для гостей (RequireAuth)
+	api.GET("/lang-calculation", RequireAuth(), h.ApiGetGlottos) // GET список заявок (фильтр по статусу и дате)
+
+	// Остальные GET/CRUD требуют авторизации
+	api.GET("/lang-calculation/:id", RequireAuth(), h.ApiGetGlotto)        // GET одна заявка с услугами
+	api.GET("/lang-calculation/cart", h.ApiGetCartIcon)                    // GET иконка корзины (оставляем без Auth, если логика корзины простая)
+	api.PUT("/lang-calculation/:id", RequireAuth(), h.ApiUpdateGlotto)     // PUT изменить поля заявки
+	api.PUT("/lang-calculation/:id/form", RequireAuth(), h.ApiFormGlotto)  // PUT сформировать заявку (создатель)
+	api.POST("/lang-calculation/:id/form", RequireAuth(), h.ApiFormGlotto) // POST сформировать заявку (создатель)
+
+	// Завершение заявки: Только для Модератора/Лингвиста
+	api.PUT("/lang-calculation/:id/complete", RequireLinguist(), h.ApiCompleteGlotto)
+
+	// Удаление дубликата маршрута, который был вне api группы:
+	// router.POST("/api/lang-calculation/:id/complete", h.ApiCompleteGlotto)
+
+	api.DELETE("/lang-calculation/:id", RequireAuth(), h.ApiDeleteGlotto) // DELETE удалить заявку (создатель)
+
+	// --- Домен m-m (GlottoLanguage) ---
+	// Все операции с содержимым заявки требуют авторизации
+	api.POST("/lang-calculation/:id/langs", RequireAuth(), h.ApiAddServiceToGlotto)        // POST добавить услугу в заявку (m-m)
+	api.PUT("/lang-calculation/:id/langs", RequireAuth(), h.ApiUpdateServiceInGlotto)      // PUT изменить параметры связи (m-m)
+	api.DELETE("/lang-calculation/:id/langs", RequireAuth(), h.ApiDeleteServiceFromGlotto) // DELETE удалить услугу из заявки (m-m)
+
+	// --- Домен Пользователь ---
+	api.POST("/users/register", h.ApiRegisterUser)              // POST регистрация (Публичный)
+	api.GET("/users/me", RequireAuth(), h.ApiGetCurrentUser)    // GET данные текущего пользователя
+	api.PUT("/users/me", RequireAuth(), h.ApiUpdateCurrentUser) // PUT обновить данные пользователя
+
+	// --- Домен Аутентификация ---
+	api.POST("/auth/login", h.ApiLogin)                  // POST аутентификация (Публичный)
+	api.POST("/auth/logout", RequireAuth(), h.ApiLogout) // POST деавторизация (Требует авторизации для очистки сессии)
 }
 
 // RegisterStatic То же самое, что и с маршрутами, регистрируем статику

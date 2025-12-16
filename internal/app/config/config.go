@@ -2,15 +2,23 @@ package config
 
 import (
 	"os"
+	"time"
 
 	"github.com/joho/godotenv"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/viper"
 )
 
+type JwtConfig struct {
+	Token         string
+	ExpiresIn     time.Duration
+	SigningMethod string
+}
+
 type Config struct {
 	ServiceHost string
 	ServicePort int
+	JWT         JwtConfig `toml:"jwt"`
 }
 
 func NewConfig() (*Config, error) {

@@ -40,8 +40,7 @@ type Lang struct {
 
 	Description string         `gorm:"column:description"`
 	PhotoKey    string         `gorm:"column:photo_key"`
-	Lexicon     datatypes.JSON `gorm:"column:lexicon"` // ← 100 слов
-
+	Lexicon     datatypes.JSON `json:"lexicon" swaggertype:"array,string"`
 }
 
 func (Lang) TableName() string {

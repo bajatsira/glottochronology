@@ -6,8 +6,13 @@ import (
 	"LAB1/internal/app/config"
 	"LAB1/internal/app/handler"
 
+	_ "LAB1/docs"
+
 	"github.com/gin-gonic/gin"
 	"github.com/sirupsen/logrus"
+
+	swaggerFiles "github.com/swaggo/files"
+	ginSwagger "github.com/swaggo/gin-swagger"
 )
 
 type Application struct {
@@ -26,6 +31,8 @@ func NewApp(c *config.Config, r *gin.Engine, h *handler.Handler) *Application {
 
 func (a *Application) RunApp() {
 	logrus.Info("Server start up")
+
+	a.Router.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
 
 	a.Handler.RegisterHandler(a.Router)
 	a.Handler.RegisterStatic(a.Router)

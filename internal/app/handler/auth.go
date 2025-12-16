@@ -113,6 +113,17 @@ func (h *Handler) ApiRegisterUser(c *gin.Context) {
 	})
 }
 
+// ApiLogin godoc
+// @Summary Аутентификация пользователя
+// @Description Вход в систему по логину и паролю. Возвращает JWT-токен и устанавливает сессионную куку.
+// @Tags Аутентификация
+// @Accept  json
+// @Produce  json
+// @Param   credentials  body   object{login=string,password=string} true "Учетные данные пользователя"
+// @Success 200 {object} object "Успешный вход"
+// @Failure 400 {object} object "Неверные данные"
+// @Failure 401 {object} object "Неверный логин или пароль"
+// @Router /auth/login [post]
 func (h *Handler) ApiLogin(c *gin.Context) {
 	var body struct {
 		Login    string `json:"login" binding:"required"`
@@ -154,8 +165,14 @@ func (h *Handler) ApiLogin(c *gin.Context) {
 		true,
 	)
 
-	token, _ := auth.GenerateJWT(user.ID, user.IsLinguist)
+	//token, _ := auth.GenerateJWT(user.ID, user.IsLinguist)
 
+	token, err := auth.GenerateJWT(user.ID, user.IsLinguist)
+	if err != nil {
+		// Временно выведите ошибку, чтобы увидеть, что происходит с JWT:
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "JWT generation failed: " + err.Error()})
+		return
+	}
 	c.JSON(http.StatusOK, gin.H{
 		"message": "ok",
 		"jwt":     token,

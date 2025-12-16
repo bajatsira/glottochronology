@@ -20,8 +20,18 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-// ApiGetLangs - GET /api/languages?query=...
-func (h *Handler) ApiGetLangs(c *gin.Context) {
+// ApiGetLangs godoc
+// @Summary Получить список языков
+// @Description Возвращает список языков, опционально фильтрованных по запросу.
+// @Tags Languages
+// @Accept  json
+// @Produce  json
+// @Param   query   query   string  false  "Поисковый запрос для фильтрации по имени"
+// @Success 200 {array} ds.Lang "Список языков"
+// @Failure 500 {object} object "Ошибка сервера"
+// @Router /api/languages [get]
+func (h *Handler) ApiGetLangs(c *gin.Context) { // ApiGetLangs - GET /api/languages?query=...
+
 	q := c.Query("query")
 	var langs []ds.Lang
 	var err error
@@ -37,7 +47,18 @@ func (h *Handler) ApiGetLangs(c *gin.Context) {
 	c.JSON(http.StatusOK, langs)
 }
 
-// ApiGetLang - GET /api/languages/:id
+// ApiGetLang godoc
+// @Summary Получить язык по ID
+// @Description Возвращает полную информацию о языке.
+// @Tags Languages
+// @Accept  json
+// @Produce  json
+// @Param   id   path   int  true  "ID языка"
+// @Success 200 {object} ds.Lang "Информация о языке"
+// @Failure 400 {object} object "Неверный ID"
+// @Failure 404 {object} object "Язык не найден"
+// @Failure 500 {object} object "Ошибка сервера"
+// @Router /api/languages/{id} [get]
 func (h *Handler) ApiGetLang(c *gin.Context) {
 	idStr := c.Param("id")
 	id, err := strconv.Atoi(idStr)
@@ -57,7 +78,21 @@ func (h *Handler) ApiGetLang(c *gin.Context) {
 	c.JSON(http.StatusOK, lang)
 }
 
-// ApiCreateLang - POST /api/languages
+// ApiCreateLang godoc
+// @Summary Создать новый язык
+// @Description Доступно только для Модератора/Лингвиста.
+// @Tags Languages
+// @Accept  json
+// @Produce  json
+// @Param   language  body   ds.Lang  true  "Данные нового языка"
+// @Success 201 {object} ds.Lang "Успешное создание"
+// @Failure 400 {object} object "Неверные данные"
+// @Failure 401 {object} object "Требуется авторизация"
+// @Failure 403 {object} object "Недостаточно прав (не Модератор)"
+// @Failure 500 {object} object "Ошибка сервера"
+// @Router /api/languages [post]
+// @Security ApiKeyAuth
+// @Security CookieAuth
 func (h *Handler) ApiCreateLang(c *gin.Context) {
 	var body ds.Lang
 	if err := c.ShouldBindJSON(&body); err != nil {
@@ -71,7 +106,22 @@ func (h *Handler) ApiCreateLang(c *gin.Context) {
 	c.JSON(http.StatusCreated, body)
 }
 
-// ApiUpdateLang - PUT /api/languages/:id
+// ApiUpdateLang godoc
+// @Summary Обновить информацию о языке
+// @Description Доступно только для Модератора/Лингвиста.
+// @Tags Languages
+// @Accept  json
+// @Produce  json
+// @Param   id   path   int  true  "ID языка"
+// @Param   updates  body   map[string]interface{}  true  "Обновляемые поля"
+// @Success 200 {object} ds.Lang "Успешное обновление"
+// @Failure 400 {object} object "Неверный ID или данные"
+// @Failure 401 {object} object "Требуется авторизация"
+// @Failure 403 {object} object "Недостаточно прав"
+// @Failure 500 {object} object "Ошибка сервера"
+// @Router /api/languages/{id} [put]
+// @Security ApiKeyAuth
+// @Security CookieAuth
 func (h *Handler) ApiUpdateLang(c *gin.Context) {
 	idStr := c.Param("id")
 	id, err := strconv.Atoi(idStr)
@@ -92,7 +142,21 @@ func (h *Handler) ApiUpdateLang(c *gin.Context) {
 	c.JSON(http.StatusOK, lang)
 }
 
-// ApiDeleteLang - PUT/DELETE logical delete -> status = 'удалён'
+// ApiDeleteLang godoc
+// @Summary Логически удалить (скрыть) язык
+// @Description Устанавливает статус языка как 'удалён'. Доступно только для Модератора/Лингвиста.
+// @Tags Languages
+// @Accept  json
+// @Produce  json
+// @Param   id   path   int  true  "ID языка"
+// @Success 200 {object} object "Успешное удаление"
+// @Failure 400 {object} object "Неверный ID"
+// @Failure 401 {object} object "Требуется авторизация"
+// @Failure 403 {object} object "Недостаточно прав"
+// @Failure 500 {object} object "Ошибка сервера"
+// @Router /api/languages/{id} [delete]
+// @Security ApiKeyAuth
+// @Security CookieAuth
 func (h *Handler) ApiDeleteLang(c *gin.Context) {
 	idStr := c.Param("id")
 	id, err := strconv.Atoi(idStr)
@@ -107,7 +171,22 @@ func (h *Handler) ApiDeleteLang(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"status": "удалён"})
 }
 
-// ApiUploadLangImage - POST /api/languages/:id/image (form file "file")
+// ApiUploadLangImage godoc
+// @Summary Загрузить изображение для языка
+// @Description Загрузка файла изображения. Использует multipart/form-data с полем "file". Доступно только для Модератора/Лингвиста.
+// @Tags Languages
+// @Accept  mpfd
+// @Produce  json
+// @Param   id   path   int  true  "ID языка"
+// @Param   file  formData   file  true  "Файл изображения"
+// @Success 200 {object} map[string]string "Ключ загруженного файла в Minio"
+// @Failure 400 {object} object "Неверный ID или файл не предоставлен"
+// @Failure 401 {object} object "Требуется авторизация"
+// @Failure 403 {object} object "Недостаточно прав"
+// @Failure 500 {object} object "Ошибка загрузки/сервера"
+// @Router /api/languages/{id}/image [post]
+// @Security ApiKeyAuth
+// @Security CookieAuth
 func (h *Handler) ApiUploadLangImage(c *gin.Context) {
 	idStr := c.Param("id")
 	id, err := strconv.Atoi(idStr)
@@ -171,6 +250,19 @@ func (h *Handler) ApiGetGlottos(c *gin.Context) {
 }
 */
 
+// ApiGetGlottos godoc
+// @Summary Получить список заявок
+// @Description Получает список заявок. Гость: 401. Создатель: только свои заявки. Модератор: все заявки.
+// @Tags Заявки (LangCalculation)
+// @Accept  json
+// @Produce  json
+// @Param   status  query   string  false  "Фильтр по статусу заявки"
+// @Success 200 {array} ds.LangCalculation "Успешное получение списка заявок"
+// @Failure 401 {object} object "Требуется аутентификация"
+// @Failure 500 {object} object "Ошибка сервера"
+// @Router /api/lang-calculation [get]
+// @Security ApiKeyAuth
+// @Security CookieAuth
 func (h *Handler) ApiGetGlottos(c *gin.Context) {
 
 	// 1. Извлекаем пользователя из контекста
@@ -217,7 +309,20 @@ func (h *Handler) ApiGetGlottos(c *gin.Context) {
 	c.JSON(http.StatusOK, glottos)
 }
 
-// ApiGetGlotto - GET /api/glottos/:id
+// ApiGetGlotto godoc
+// @Summary Получить заявку по ID
+// @Description Возвращает детальную информацию о заявке. Требуется авторизация.
+// @Tags Заявки (LangCalculation)
+// @Accept  json
+// @Produce  json
+// @Param   id   path   int  true  "ID заявки"
+// @Success 200 {object} ds.LangCalculation
+// @Failure 400 {object} object "Неверный ID"
+// @Failure 401 {object} object "Требуется авторизация"
+// @Failure 404 {object} object "Заявка не найдена"
+// @Router /api/lang-calculation/{id} [get]
+// @Security ApiKeyAuth
+// @Security CookieAuth
 func (h *Handler) ApiGetGlotto(c *gin.Context) {
 	idStr := c.Param("id")
 	id, err := strconv.Atoi(idStr)
@@ -233,7 +338,14 @@ func (h *Handler) ApiGetGlotto(c *gin.Context) {
 	c.JSON(http.StatusOK, g)
 }
 
-// ApiGetCartIcon - GET /api/glottos/cart (черновик текущего пользователя)
+// ApiGetCartIcon godoc
+// @Summary Получить статус черновика/корзины
+// @Description Возвращает ID черновика и количество языков в нем для текущего пользователя.
+// @Tags Заявки (LangCalculation)
+// @Accept  json
+// @Produce  json
+// @Success 200 {object} object "ID черновика и количество"
+// @Router /api/lang-calculation/cart [get]
 func (h *Handler) ApiGetCartIcon(c *gin.Context) {
 	// creator singleton: пока используем 1 (как в проекте)
 	researcherID := uint(1)
@@ -247,7 +359,18 @@ func (h *Handler) ApiGetCartIcon(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"draft_id": g.ID, "count": count})
 }
 
-// ApiAddServiceToGlotto (POST) — алиас на AddServiceToDraft
+// ApiAddServiceToGlotto godoc
+// @Summary Добавить язык в черновик (корзину)
+// @Description Добавляет язык в текущий черновик пользователя. Требуется авторизация.
+// @Tags Заявки (LangCalculation)
+// @Param   id   path   int  true  "ID языка, который нужно добавить"
+// @Success 204 "Успешное добавление"
+// @Failure 400 "Неверный ID"
+// @Failure 401 "Требуется авторизация"
+// @Failure 500 "Ошибка сервера/репозитория"
+// @Router /api/lang-calculation/{id}/langs [post]
+// @Security ApiKeyAuth
+// @Security CookieAuth
 func (h *Handler) ApiAddServiceToGlotto(c *gin.Context) {
 	langIDStr := c.Param("id")
 	langID, err := strconv.Atoi(langIDStr)
@@ -263,7 +386,20 @@ func (h *Handler) ApiAddServiceToGlotto(c *gin.Context) {
 	c.Status(http.StatusNoContent)
 }
 
-// ApiUpdateServiceInGlotto — PUT /api/glottos/:id/services
+// ApiUpdateServiceInGlotto godoc
+// @Summary Обновить параметры языка в заявке
+// @Description Изменение параметров добавленного языка в заявке (заглушка в реализации). Требуется авторизация.
+// @Tags Заявки (LangCalculation)
+// @Accept  json
+// @Produce  json
+// @Param   id   path   int  true  "ID заявки (LangCalculation)"
+// @Param   updates  body   map[string]interface{}  true  "Обновляемые параметры"
+// @Success 200 {object} object "Статус обновления"
+// @Failure 400 "Неверный ID или данные"
+// @Failure 401 "Требуется авторизация"
+// @Router /api/lang-calculation/{id}/langs [put]
+// @Security ApiKeyAuth
+// @Security CookieAuth
 func (h *Handler) ApiUpdateServiceInGlotto(c *gin.Context) {
 	// пример: body { "language_id": 5, "value": "...", "position": 2 }
 	var body map[string]interface{}
@@ -275,6 +411,19 @@ func (h *Handler) ApiUpdateServiceInGlotto(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"status": "ok", "updated": body})
 }
 
+// ApiDeleteServiceFromGlotto godoc
+// @Summary Удалить язык из заявки
+// @Description Удаляет язык из конкретной заявки. Требуется авторизация.
+// @Tags Заявки (LangCalculation)
+// @Param   id   path   int  true  "ID заявки (LangCalculation)"
+// @Param   language_id  query   int  true  "ID языка, который нужно удалить"
+// @Success 204 "Успешное удаление"
+// @Failure 400 "Неверный ID или language_id"
+// @Failure 401 "Требуется авторизация"
+// @Failure 500 "Ошибка сервера"
+// @Router /api/lang-calculation/{id}/langs [delete]
+// @Security ApiKeyAuth
+// @Security CookieAuth
 // ApiDeleteServiceFromGlotto — DELETE /api/glottos/:id/services?language_id=5
 func (h *Handler) ApiDeleteServiceFromGlotto(c *gin.Context) {
 	glottoIDStr := c.Param("id")
@@ -297,7 +446,21 @@ func (h *Handler) ApiDeleteServiceFromGlotto(c *gin.Context) {
 	c.Status(http.StatusNoContent)
 }
 
-// ApiUpdateGlotto — PUT /api/glottos/:id (изменение полей заявки)
+// ApiUpdateGlotto godoc
+// @Summary Обновить поля заявки
+// @Description Обновление несистемных полей заявки. Требуется авторизация (Создатель или Модератор).
+// @Tags Заявки (LangCalculation)
+// @Accept  json
+// @Produce  json
+// @Param   id   path   int  true  "ID заявки"
+// @Param   updates  body   map[string]interface{}  true  "Обновляемые поля"
+// @Success 200 {object} ds.LangCalculation "Обновленная заявка"
+// @Failure 400 "Неверный ID или данные"
+// @Failure 401 "Требуется авторизация"
+// @Failure 500 "Ошибка сервера"
+// @Router /api/lang-calculation/{id} [put]
+// @Security ApiKeyAuth
+// @Security CookieAuth
 func (h *Handler) ApiUpdateGlotto(c *gin.Context) {
 	idStr := c.Param("id")
 	id, err := strconv.Atoi(idStr)
@@ -325,7 +488,17 @@ func (h *Handler) ApiUpdateGlotto(c *gin.Context) {
 	c.JSON(http.StatusOK, g)
 }
 
-// ApiFormGlotto — PUT /api/glottos/:id/form
+// ApiFormGlotto godoc
+// @Summary Сформировать черновик в заявку
+// @Description Изменяет статус черновика на 'сформирована' или аналогичный. Требуется авторизация.
+// @Tags Заявки (LangCalculation)
+// @Param   id   path   int  true  "ID заявки (черновика)"
+// @Success 204 "Успешное формирование"
+// @Failure 400 "Ошибка формирования (например, пустой черновик)"
+// @Failure 401 "Требуется авторизация"
+// @Router /api/lang-calculation/{id}/form [put]
+// @Security ApiKeyAuth
+// @Security CookieAuth
 func (h *Handler) ApiFormGlotto(c *gin.Context) {
 	idStr := c.Param("id")
 	id, err := strconv.Atoi(idStr)
@@ -425,7 +598,18 @@ func (h *Handler) ApiCompleteLangCalculation(c *gin.Context) {
 	c.Status(http.StatusNoContent)
 }
 
-// ApiDeleteGlotto — DELETE /api/glottos/:id
+// ApiDeleteGlotto godoc
+// @Summary Удалить заявку (логическое удаление)
+// @Description Логически удаляет заявку. Требуется авторизация.
+// @Tags Заявки (LangCalculation)
+// @Param   id   path   int  true  "ID заявки"
+// @Success 204 "Успешное удаление"
+// @Failure 400 "Неверный ID"
+// @Failure 401 "Требуется авторизация"
+// @Failure 500 "Ошибка сервера"
+// @Router /api/lang-calculation/{id} [delete]
+// @Security ApiKeyAuth
+// @Security CookieAuth
 func (h *Handler) ApiDeleteGlotto(c *gin.Context) {
 	idStr := c.Param("id")
 	id, err := strconv.Atoi(idStr)
@@ -445,6 +629,18 @@ func gormErrNotFound(err error) bool {
 	return err == gorm.ErrRecordNotFound || (err != nil && err.Error() == "record not found")
 }
 
+// UpdateLangLexiconForm godoc
+// @Summary Обновить лексикон языка (через форму)
+// @Description Принимает данные лексикона в формате CSV из HTML-формы и сохраняет.
+// @Tags Languages
+// @Accept application/x-www-form-urlencoded <-- ИСПРАВЛЕНО
+// @Produce  html
+// @Param   id   path   int  true  "ID языка"
+// @Param   lexicon_csv  formData   string  true  "Лексикон в формате CSV"
+// @Success 303 "Перенаправление на страницу языка после успешного обновления"
+// @Failure 400 "Неверный ID или пустой лексикон"
+// @Failure 500 "Ошибка сервера"
+// @Router /languages/{id}/lexicon [post]
 func (h *Handler) UpdateLangLexiconForm(c *gin.Context) {
 	idStr := c.Param("id")
 	id, err := strconv.Atoi(idStr)

@@ -2,9 +2,10 @@ package auth
 
 import (
 	"crypto/rsa"
-	"crypto/x509"
-	"encoding/pem"
+	_ "crypto/x509"
+	_ "encoding/pem"
 	"errors"
+	"fmt"
 	"os"
 	"time"
 
@@ -23,60 +24,33 @@ func JwtVerifyKey() *rsa.PublicKey {
 }
 
 func InitJWT(privateKeyPath, publicKeyPath string) error {
-	if privateKeyPath == "" || publicKeyPath == "" {
-		return nil
-	}
-	// private
-	privPem, err := os.ReadFile(privateKeyPath)
+	// 1. Чтение приватного ключа
+	signBytes, err := os.ReadFile(privateKeyPath)
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to read private key file: %w", err) // 💡 ОШИБКА ЗДЕСЬ
 	}
-	block, _ := pem.Decode(privPem)
-	if block == nil {
-		return errors.New("invalid private key pem")
-	}
-	privKey, err := x509.ParsePKCS1PrivateKey(block.Bytes)
-	if err != nil {
-		// try PKCS8
-		k, err2 := x509.ParsePKCS8PrivateKey(block.Bytes)
-		if err2 != nil {
-			return err
-		}
-		if rsaKey, ok := k.(*rsa.PrivateKey); ok {
-			privKey = rsaKey
-		} else {
-			return errors.New("private key is not RSA")
-		}
-	}
-	jwtSigningKey = privKey
 
-	// public
-	pubPem, err := os.ReadFile(publicKeyPath)
+	// 2. Парсинг приватного ключа
+	signingKey, err := jwt.ParseRSAPrivateKeyFromPEM(signBytes)
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to parse private key: %w", err) // 💡 ОШИБКА ЗДЕСЬ
 	}
-	blockPub, _ := pem.Decode(pubPem)
-	if blockPub == nil {
-		return errors.New("invalid public key pem")
-	}
-	pubInterface, err := x509.ParsePKIXPublicKey(blockPub.Bytes)
+	jwtSigningKey = signingKey // <--- Эта переменная должна быть инициализирована!
+
+	// 3. Чтение и парсинг публичного ключа (для верификации)
+	verifyBytes, err := os.ReadFile(publicKeyPath)
 	if err != nil {
-		// try ParsePKCS1PublicKey
-		pubKey, err2 := x509.ParsePKCS1PublicKey(blockPub.Bytes)
-		if err2 != nil {
-			return err
-		}
-		jwtVerifyKey = pubKey
-	} else {
-		if rsaPub, ok := pubInterface.(*rsa.PublicKey); ok {
-			jwtVerifyKey = rsaPub
-		} else {
-			return errors.New("public key is not RSA")
-		}
+		return fmt.Errorf("failed to read public key file: %w", err) // 💡 ОШИБКА ЗДЕСЬ
 	}
+
+	verifyKey, err := jwt.ParseRSAPublicKeyFromPEM(verifyBytes)
+	if err != nil {
+		return fmt.Errorf("failed to parse public key: %w", err) // 💡 ОШИБКА ЗДЕСЬ
+	}
+	jwtVerifyKey = verifyKey
+
 	return nil
 }
-
 func GenerateJWT(userID uint, isModerator bool) (string, error) {
 	if jwtSigningKey == nil {
 		return "", errors.New("jwt not initialized")

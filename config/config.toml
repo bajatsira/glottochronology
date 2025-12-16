@@ -1,2 +1,5 @@
 ServiceHost = "localhost" 
 ServicePort = 8082
+[jwt]
+private_key_path = "priv.pem"
+public_key_path = "pub.pem"

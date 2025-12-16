@@ -1,0 +1,644 @@
+basePath: /api
+definitions:
+  ds.Lang:
+    properties:
+      description:
+        type: string
+      family:
+        type: string
+      id:
+        type: integer
+      lexicon:
+        items:
+          type: string
+        type: array
+      name:
+        type: string
+      photoKey:
+        type: string
+      status:
+        description: для удаления языка
+        type: string
+      subgroup:
+        type: string
+      writingFamily:
+        type: string
+    type: object
+  ds.LangCalculation:
+    properties:
+      baseLanguageID:
+        type: integer
+      dateCreate:
+        type: string
+      dateFinish:
+        type: string
+      dateUpdate:
+        type: string
+      id:
+        type: integer
+      languages:
+        items:
+          $ref: '#/definitions/ds.LangCalculationLanguage'
+        type: array
+      linguistID:
+        type: integer
+      researcherID:
+        type: integer
+      resultYearsAgo:
+        type: integer
+      similarityRate:
+        type: number
+      status:
+        type: string
+    type: object
+  ds.LangCalculationLanguage:
+    properties:
+      id:
+        type: integer
+      isBase:
+        type: boolean
+      langCalculationID:
+        type: integer
+      language:
+        $ref: '#/definitions/ds.Lang'
+      languageID:
+        type: integer
+    type: object
+host: localhost:8082
+info:
+  contact: {}
+  description: Расчет времени расхождения языков методом глоттохронологии.
+  title: Language Annotation Backend API
+  version: "1.0"
+paths:
+  /api/glottos/{id}/complete:
+    put:
+      description: Только лингвист может завершать заявку
+      responses: {}
+      security:
+      - CookieAuth: []
+      - BearerAuth: []
+  /api/lang-calculation:
+    get:
+      consumes:
+      - application/json
+      description: 'Получает список заявок. Гость: 401. Создатель: только свои заявки.
+        Модератор: все заявки.'
+      parameters:
+      - description: Фильтр по статусу заявки
+        in: query
+        name: status
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Успешное получение списка заявок
+          schema:
+            items:
+              $ref: '#/definitions/ds.LangCalculation'
+            type: array
+        "401":
+          description: Требуется аутентификация
+          schema:
+            type: object
+        "500":
+          description: Ошибка сервера
+          schema:
+            type: object
+      security:
+      - ApiKeyAuth: []
+      - CookieAuth: []
+      summary: Получить список заявок
+      tags:
+      - Заявки (LangCalculation)
+  /api/lang-calculation/{id}:
+    delete:
+      description: Логически удаляет заявку. Требуется авторизация.
+      parameters:
+      - description: ID заявки
+        in: path
+        name: id
+        required: true
+        type: integer
+      responses:
+        "204":
+          description: Успешное удаление
+        "400":
+          description: Неверный ID
+        "401":
+          description: Требуется авторизация
+        "500":
+          description: Ошибка сервера
+      security:
+      - ApiKeyAuth: []
+      - CookieAuth: []
+      summary: Удалить заявку (логическое удаление)
+      tags:
+      - Заявки (LangCalculation)
+    get:
+      consumes:
+      - application/json
+      description: Возвращает детальную информацию о заявке. Требуется авторизация.
+      parameters:
+      - description: ID заявки
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/ds.LangCalculation'
+        "400":
+          description: Неверный ID
+          schema:
+            type: object
+        "401":
+          description: Требуется авторизация
+          schema:
+            type: object
+        "404":
+          description: Заявка не найдена
+          schema:
+            type: object
+      security:
+      - ApiKeyAuth: []
+      - CookieAuth: []
+      summary: Получить заявку по ID
+      tags:
+      - Заявки (LangCalculation)
+    put:
+      consumes:
+      - application/json
+      description: Обновление несистемных полей заявки. Требуется авторизация (Создатель
+        или Модератор).
+      parameters:
+      - description: ID заявки
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: Обновляемые поля
+        in: body
+        name: updates
+        required: true
+        schema:
+          additionalProperties: true
+          type: object
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Обновленная заявка
+          schema:
+            $ref: '#/definitions/ds.LangCalculation'
+        "400":
+          description: Неверный ID или данные
+        "401":
+          description: Требуется авторизация
+        "500":
+          description: Ошибка сервера
+      security:
+      - ApiKeyAuth: []
+      - CookieAuth: []
+      summary: Обновить поля заявки
+      tags:
+      - Заявки (LangCalculation)
+  /api/lang-calculation/{id}/form:
+    put:
+      description: Изменяет статус черновика на 'сформирована' или аналогичный. Требуется
+        авторизация.
+      parameters:
+      - description: ID заявки (черновика)
+        in: path
+        name: id
+        required: true
+        type: integer
+      responses:
+        "204":
+          description: Успешное формирование
+        "400":
+          description: Ошибка формирования (например, пустой черновик)
+        "401":
+          description: Требуется авторизация
+      security:
+      - ApiKeyAuth: []
+      - CookieAuth: []
+      summary: Сформировать черновик в заявку
+      tags:
+      - Заявки (LangCalculation)
+  /api/lang-calculation/{id}/langs:
+    delete:
+      description: Удаляет язык из конкретной заявки. Требуется авторизация.
+      parameters:
+      - description: ID заявки (LangCalculation)
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: ID языка, который нужно удалить
+        in: query
+        name: language_id
+        required: true
+        type: integer
+      responses:
+        "204":
+          description: Успешное удаление
+        "400":
+          description: Неверный ID или language_id
+        "401":
+          description: Требуется авторизация
+        "500":
+          description: Ошибка сервера
+      security:
+      - ApiKeyAuth: []
+      - CookieAuth: []
+      summary: Удалить язык из заявки
+      tags:
+      - Заявки (LangCalculation)
+    post:
+      description: Добавляет язык в текущий черновик пользователя. Требуется авторизация.
+      parameters:
+      - description: ID языка, который нужно добавить
+        in: path
+        name: id
+        required: true
+        type: integer
+      responses:
+        "204":
+          description: Успешное добавление
+        "400":
+          description: Неверный ID
+        "401":
+          description: Требуется авторизация
+        "500":
+          description: Ошибка сервера/репозитория
+      security:
+      - ApiKeyAuth: []
+      - CookieAuth: []
+      summary: Добавить язык в черновик (корзину)
+      tags:
+      - Заявки (LangCalculation)
+    put:
+      consumes:
+      - application/json
+      description: Изменение параметров добавленного языка в заявке (заглушка в реализации).
+        Требуется авторизация.
+      parameters:
+      - description: ID заявки (LangCalculation)
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: Обновляемые параметры
+        in: body
+        name: updates
+        required: true
+        schema:
+          additionalProperties: true
+          type: object
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Статус обновления
+          schema:
+            type: object
+        "400":
+          description: Неверный ID или данные
+        "401":
+          description: Требуется авторизация
+      security:
+      - ApiKeyAuth: []
+      - CookieAuth: []
+      summary: Обновить параметры языка в заявке
+      tags:
+      - Заявки (LangCalculation)
+  /api/lang-calculation/cart:
+    get:
+      consumes:
+      - application/json
+      description: Возвращает ID черновика и количество языков в нем для текущего
+        пользователя.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: ID черновика и количество
+          schema:
+            type: object
+      summary: Получить статус черновика/корзины
+      tags:
+      - Заявки (LangCalculation)
+  /api/languages:
+    get:
+      consumes:
+      - application/json
+      description: Возвращает список языков, опционально фильтрованных по запросу.
+      parameters:
+      - description: Поисковый запрос для фильтрации по имени
+        in: query
+        name: query
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Список языков
+          schema:
+            items:
+              $ref: '#/definitions/ds.Lang'
+            type: array
+        "500":
+          description: Ошибка сервера
+          schema:
+            type: object
+      summary: Получить список языков
+      tags:
+      - Languages
+    post:
+      consumes:
+      - application/json
+      description: Доступно только для Модератора/Лингвиста.
+      parameters:
+      - description: Данные нового языка
+        in: body
+        name: language
+        required: true
+        schema:
+          $ref: '#/definitions/ds.Lang'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Успешное создание
+          schema:
+            $ref: '#/definitions/ds.Lang'
+        "400":
+          description: Неверные данные
+          schema:
+            type: object
+        "401":
+          description: Требуется авторизация
+          schema:
+            type: object
+        "403":
+          description: Недостаточно прав (не Модератор)
+          schema:
+            type: object
+        "500":
+          description: Ошибка сервера
+          schema:
+            type: object
+      security:
+      - ApiKeyAuth: []
+      - CookieAuth: []
+      summary: Создать новый язык
+      tags:
+      - Languages
+  /api/languages/{id}:
+    delete:
+      consumes:
+      - application/json
+      description: Устанавливает статус языка как 'удалён'. Доступно только для Модератора/Лингвиста.
+      parameters:
+      - description: ID языка
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Успешное удаление
+          schema:
+            type: object
+        "400":
+          description: Неверный ID
+          schema:
+            type: object
+        "401":
+          description: Требуется авторизация
+          schema:
+            type: object
+        "403":
+          description: Недостаточно прав
+          schema:
+            type: object
+        "500":
+          description: Ошибка сервера
+          schema:
+            type: object
+      security:
+      - ApiKeyAuth: []
+      - CookieAuth: []
+      summary: Логически удалить (скрыть) язык
+      tags:
+      - Languages
+    get:
+      consumes:
+      - application/json
+      description: Возвращает полную информацию о языке.
+      parameters:
+      - description: ID языка
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Информация о языке
+          schema:
+            $ref: '#/definitions/ds.Lang'
+        "400":
+          description: Неверный ID
+          schema:
+            type: object
+        "404":
+          description: Язык не найден
+          schema:
+            type: object
+        "500":
+          description: Ошибка сервера
+          schema:
+            type: object
+      summary: Получить язык по ID
+      tags:
+      - Languages
+    put:
+      consumes:
+      - application/json
+      description: Доступно только для Модератора/Лингвиста.
+      parameters:
+      - description: ID языка
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: Обновляемые поля
+        in: body
+        name: updates
+        required: true
+        schema:
+          additionalProperties: true
+          type: object
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Успешное обновление
+          schema:
+            $ref: '#/definitions/ds.Lang'
+        "400":
+          description: Неверный ID или данные
+          schema:
+            type: object
+        "401":
+          description: Требуется авторизация
+          schema:
+            type: object
+        "403":
+          description: Недостаточно прав
+          schema:
+            type: object
+        "500":
+          description: Ошибка сервера
+          schema:
+            type: object
+      security:
+      - ApiKeyAuth: []
+      - CookieAuth: []
+      summary: Обновить информацию о языке
+      tags:
+      - Languages
+  /api/languages/{id}/image:
+    post:
+      consumes:
+      - multipart/form-data
+      description: Загрузка файла изображения. Использует multipart/form-data с полем
+        "file". Доступно только для Модератора/Лингвиста.
+      parameters:
+      - description: ID языка
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: Файл изображения
+        in: formData
+        name: file
+        required: true
+        type: file
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Ключ загруженного файла в Minio
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "400":
+          description: Неверный ID или файл не предоставлен
+          schema:
+            type: object
+        "401":
+          description: Требуется авторизация
+          schema:
+            type: object
+        "403":
+          description: Недостаточно прав
+          schema:
+            type: object
+        "500":
+          description: Ошибка загрузки/сервера
+          schema:
+            type: object
+      security:
+      - ApiKeyAuth: []
+      - CookieAuth: []
+      summary: Загрузить изображение для языка
+      tags:
+      - Languages
+  /auth/login:
+    post:
+      consumes:
+      - application/json
+      description: Вход в систему по логину и паролю. Возвращает JWT-токен и устанавливает
+        сессионную куку.
+      parameters:
+      - description: Учетные данные пользователя
+        in: body
+        name: credentials
+        required: true
+        schema:
+          properties:
+            login:
+              type: string
+            password:
+              type: string
+          type: object
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Успешный вход
+          schema:
+            type: object
+        "400":
+          description: Неверные данные
+          schema:
+            type: object
+        "401":
+          description: Неверный логин или пароль
+          schema:
+            type: object
+      summary: Аутентификация пользователя
+      tags:
+      - Аутентификация
+  /languages/{id}/lexicon:
+    post:
+      consumes:
+      - application/x-www-form-urlencoded <-- ИСПРАВЛЕНО
+      description: Принимает данные лексикона в формате CSV из HTML-формы и сохраняет.
+      parameters:
+      - description: ID языка
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: Лексикон в формате CSV
+        in: formData
+        name: lexicon_csv
+        required: true
+        type: string
+      produces:
+      - text/html
+      responses:
+        "303":
+          description: Перенаправление на страницу языка после успешного обновления
+        "400":
+          description: Неверный ID или пустой лексикон
+        "500":
+          description: Ошибка сервера
+      summary: Обновить лексикон языка (через форму)
+      tags:
+      - Languages
+securityDefinitions:
+  ApiKeyAuth:
+    description: 'Введите токен JWT (например: Bearer <token>)'
+    in: header
+    name: Authorization
+    type: apiKey
+  CookieAuth:
+    description: 'Введите куку сессии (например: session_id=<value>)'
+    in: header
+    name: Cookie
+    type: apiKey
+swagger: "2.0"

@@ -1,0 +1,1004 @@
+{
+    "swagger": "2.0",
+    "info": {
+        "description": "Расчет времени расхождения языков методом глоттохронологии.",
+        "title": "Language Annotation Backend API",
+        "contact": {},
+        "version": "1.0"
+    },
+    "host": "localhost:8082",
+    "basePath": "/api",
+    "paths": {
+        "/api/glottos/{id}/complete": {
+            "put": {
+                "security": [
+                    {
+                        "CookieAuth": []
+                    },
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Только лингвист может завершать заявку",
+                "responses": {}
+            }
+        },
+        "/api/lang-calculation": {
+            "get": {
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    },
+                    {
+                        "CookieAuth": []
+                    }
+                ],
+                "description": "Получает список заявок. Гость: 401. Создатель: только свои заявки. Модератор: все заявки.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Заявки (LangCalculation)"
+                ],
+                "summary": "Получить список заявок",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Фильтр по статусу заявки",
+                        "name": "status",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Успешное получение списка заявок",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/ds.LangCalculation"
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Требуется аутентификация",
+                        "schema": {
+                            "type": "object"
+                        }
+                    },
+                    "500": {
+                        "description": "Ошибка сервера",
+                        "schema": {
+                            "type": "object"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/lang-calculation/cart": {
+            "get": {
+                "description": "Возвращает ID черновика и количество языков в нем для текущего пользователя.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Заявки (LangCalculation)"
+                ],
+                "summary": "Получить статус черновика/корзины",
+                "responses": {
+                    "200": {
+                        "description": "ID черновика и количество",
+                        "schema": {
+                            "type": "object"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/lang-calculation/{id}": {
+            "get": {
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    },
+                    {
+                        "CookieAuth": []
+                    }
+                ],
+                "description": "Возвращает детальную информацию о заявке. Требуется авторизация.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Заявки (LangCalculation)"
+                ],
+                "summary": "Получить заявку по ID",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "ID заявки",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/ds.LangCalculation"
+                        }
+                    },
+                    "400": {
+                        "description": "Неверный ID",
+                        "schema": {
+                            "type": "object"
+                        }
+                    },
+                    "401": {
+                        "description": "Требуется авторизация",
+                        "schema": {
+                            "type": "object"
+                        }
+                    },
+                    "404": {
+                        "description": "Заявка не найдена",
+                        "schema": {
+                            "type": "object"
+                        }
+                    }
+                }
+            },
+            "put": {
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    },
+                    {
+                        "CookieAuth": []
+                    }
+                ],
+                "description": "Обновление несистемных полей заявки. Требуется авторизация (Создатель или Модератор).",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Заявки (LangCalculation)"
+                ],
+                "summary": "Обновить поля заявки",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "ID заявки",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Обновляемые поля",
+                        "name": "updates",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Обновленная заявка",
+                        "schema": {
+                            "$ref": "#/definitions/ds.LangCalculation"
+                        }
+                    },
+                    "400": {
+                        "description": "Неверный ID или данные"
+                    },
+                    "401": {
+                        "description": "Требуется авторизация"
+                    },
+                    "500": {
+                        "description": "Ошибка сервера"
+                    }
+                }
+            },
+            "delete": {
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    },
+                    {
+                        "CookieAuth": []
+                    }
+                ],
+                "description": "Логически удаляет заявку. Требуется авторизация.",
+                "tags": [
+                    "Заявки (LangCalculation)"
+                ],
+                "summary": "Удалить заявку (логическое удаление)",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "ID заявки",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "Успешное удаление"
+                    },
+                    "400": {
+                        "description": "Неверный ID"
+                    },
+                    "401": {
+                        "description": "Требуется авторизация"
+                    },
+                    "500": {
+                        "description": "Ошибка сервера"
+                    }
+                }
+            }
+        },
+        "/api/lang-calculation/{id}/form": {
+            "put": {
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    },
+                    {
+                        "CookieAuth": []
+                    }
+                ],
+                "description": "Изменяет статус черновика на 'сформирована' или аналогичный. Требуется авторизация.",
+                "tags": [
+                    "Заявки (LangCalculation)"
+                ],
+                "summary": "Сформировать черновик в заявку",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "ID заявки (черновика)",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "Успешное формирование"
+                    },
+                    "400": {
+                        "description": "Ошибка формирования (например, пустой черновик)"
+                    },
+                    "401": {
+                        "description": "Требуется авторизация"
+                    }
+                }
+            }
+        },
+        "/api/lang-calculation/{id}/langs": {
+            "put": {
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    },
+                    {
+                        "CookieAuth": []
+                    }
+                ],
+                "description": "Изменение параметров добавленного языка в заявке (заглушка в реализации). Требуется авторизация.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Заявки (LangCalculation)"
+                ],
+                "summary": "Обновить параметры языка в заявке",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "ID заявки (LangCalculation)",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Обновляемые параметры",
+                        "name": "updates",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Статус обновления",
+                        "schema": {
+                            "type": "object"
+                        }
+                    },
+                    "400": {
+                        "description": "Неверный ID или данные"
+                    },
+                    "401": {
+                        "description": "Требуется авторизация"
+                    }
+                }
+            },
+            "post": {
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    },
+                    {
+                        "CookieAuth": []
+                    }
+                ],
+                "description": "Добавляет язык в текущий черновик пользователя. Требуется авторизация.",
+                "tags": [
+                    "Заявки (LangCalculation)"
+                ],
+                "summary": "Добавить язык в черновик (корзину)",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "ID языка, который нужно добавить",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "Успешное добавление"
+                    },
+                    "400": {
+                        "description": "Неверный ID"
+                    },
+                    "401": {
+                        "description": "Требуется авторизация"
+                    },
+                    "500": {
+                        "description": "Ошибка сервера/репозитория"
+                    }
+                }
+            },
+            "delete": {
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    },
+                    {
+                        "CookieAuth": []
+                    }
+                ],
+                "description": "Удаляет язык из конкретной заявки. Требуется авторизация.",
+                "tags": [
+                    "Заявки (LangCalculation)"
+                ],
+                "summary": "Удалить язык из заявки",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "ID заявки (LangCalculation)",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "integer",
+                        "description": "ID языка, который нужно удалить",
+                        "name": "language_id",
+                        "in": "query",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "Успешное удаление"
+                    },
+                    "400": {
+                        "description": "Неверный ID или language_id"
+                    },
+                    "401": {
+                        "description": "Требуется авторизация"
+                    },
+                    "500": {
+                        "description": "Ошибка сервера"
+                    }
+                }
+            }
+        },
+        "/api/languages": {
+            "get": {
+                "description": "Возвращает список языков, опционально фильтрованных по запросу.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Languages"
+                ],
+                "summary": "Получить список языков",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Поисковый запрос для фильтрации по имени",
+                        "name": "query",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Список языков",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/ds.Lang"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Ошибка сервера",
+                        "schema": {
+                            "type": "object"
+                        }
+                    }
+                }
+            },
+            "post": {
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    },
+                    {
+                        "CookieAuth": []
+                    }
+                ],
+                "description": "Доступно только для Модератора/Лингвиста.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Languages"
+                ],
+                "summary": "Создать новый язык",
+                "parameters": [
+                    {
+                        "description": "Данные нового языка",
+                        "name": "language",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/ds.Lang"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Успешное создание",
+                        "schema": {
+                            "$ref": "#/definitions/ds.Lang"
+                        }
+                    },
+                    "400": {
+                        "description": "Неверные данные",
+                        "schema": {
+                            "type": "object"
+                        }
+                    },
+                    "401": {
+                        "description": "Требуется авторизация",
+                        "schema": {
+                            "type": "object"
+                        }
+                    },
+                    "403": {
+                        "description": "Недостаточно прав (не Модератор)",
+                        "schema": {
+                            "type": "object"
+                        }
+                    },
+                    "500": {
+                        "description": "Ошибка сервера",
+                        "schema": {
+                            "type": "object"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/languages/{id}": {
+            "get": {
+                "description": "Возвращает полную информацию о языке.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Languages"
+                ],
+                "summary": "Получить язык по ID",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "ID языка",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Информация о языке",
+                        "schema": {
+                            "$ref": "#/definitions/ds.Lang"
+                        }
+                    },
+                    "400": {
+                        "description": "Неверный ID",
+                        "schema": {
+                            "type": "object"
+                        }
+                    },
+                    "404": {
+                        "description": "Язык не найден",
+                        "schema": {
+                            "type": "object"
+                        }
+                    },
+                    "500": {
+                        "description": "Ошибка сервера",
+                        "schema": {
+                            "type": "object"
+                        }
+                    }
+                }
+            },
+            "put": {
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    },
+                    {
+                        "CookieAuth": []
+                    }
+                ],
+                "description": "Доступно только для Модератора/Лингвиста.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Languages"
+                ],
+                "summary": "Обновить информацию о языке",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "ID языка",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Обновляемые поля",
+                        "name": "updates",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Успешное обновление",
+                        "schema": {
+                            "$ref": "#/definitions/ds.Lang"
+                        }
+                    },
+                    "400": {
+                        "description": "Неверный ID или данные",
+                        "schema": {
+                            "type": "object"
+                        }
+                    },
+                    "401": {
+                        "description": "Требуется авторизация",
+                        "schema": {
+                            "type": "object"
+                        }
+                    },
+                    "403": {
+                        "description": "Недостаточно прав",
+                        "schema": {
+                            "type": "object"
+                        }
+                    },
+                    "500": {
+                        "description": "Ошибка сервера",
+                        "schema": {
+                            "type": "object"
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    },
+                    {
+                        "CookieAuth": []
+                    }
+                ],
+                "description": "Устанавливает статус языка как 'удалён'. Доступно только для Модератора/Лингвиста.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Languages"
+                ],
+                "summary": "Логически удалить (скрыть) язык",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "ID языка",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Успешное удаление",
+                        "schema": {
+                            "type": "object"
+                        }
+                    },
+                    "400": {
+                        "description": "Неверный ID",
+                        "schema": {
+                            "type": "object"
+                        }
+                    },
+                    "401": {
+                        "description": "Требуется авторизация",
+                        "schema": {
+                            "type": "object"
+                        }
+                    },
+                    "403": {
+                        "description": "Недостаточно прав",
+                        "schema": {
+                            "type": "object"
+                        }
+                    },
+                    "500": {
+                        "description": "Ошибка сервера",
+                        "schema": {
+                            "type": "object"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/languages/{id}/image": {
+            "post": {
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    },
+                    {
+                        "CookieAuth": []
+                    }
+                ],
+                "description": "Загрузка файла изображения. Использует multipart/form-data с полем \"file\". Доступно только для Модератора/Лингвиста.",
+                "consumes": [
+                    "multipart/form-data"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Languages"
+                ],
+                "summary": "Загрузить изображение для языка",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "ID языка",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "file",
+                        "description": "Файл изображения",
+                        "name": "file",
+                        "in": "formData",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Ключ загруженного файла в Minio",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Неверный ID или файл не предоставлен",
+                        "schema": {
+                            "type": "object"
+                        }
+                    },
+                    "401": {
+                        "description": "Требуется авторизация",
+                        "schema": {
+                            "type": "object"
+                        }
+                    },
+                    "403": {
+                        "description": "Недостаточно прав",
+                        "schema": {
+                            "type": "object"
+                        }
+                    },
+                    "500": {
+                        "description": "Ошибка загрузки/сервера",
+                        "schema": {
+                            "type": "object"
+                        }
+                    }
+                }
+            }
+        },
+        "/auth/login": {
+            "post": {
+                "description": "Вход в систему по логину и паролю. Возвращает JWT-токен и устанавливает сессионную куку.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Аутентификация"
+                ],
+                "summary": "Аутентификация пользователя",
+                "parameters": [
+                    {
+                        "description": "Учетные данные пользователя",
+                        "name": "credentials",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "login": {
+                                    "type": "string"
+                                },
+                                "password": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Успешный вход",
+                        "schema": {
+                            "type": "object"
+                        }
+                    },
+                    "400": {
+                        "description": "Неверные данные",
+                        "schema": {
+                            "type": "object"
+                        }
+                    },
+                    "401": {
+                        "description": "Неверный логин или пароль",
+                        "schema": {
+                            "type": "object"
+                        }
+                    }
+                }
+            }
+        },
+        "/languages/{id}/lexicon": {
+            "post": {
+                "description": "Принимает данные лексикона в формате CSV из HTML-формы и сохраняет.",
+                "consumes": [
+                    "application/x-www-form-urlencoded \u003c-- ИСПРАВЛЕНО"
+                ],
+                "produces": [
+                    "text/html"
+                ],
+                "tags": [
+                    "Languages"
+                ],
+                "summary": "Обновить лексикон языка (через форму)",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "ID языка",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Лексикон в формате CSV",
+                        "name": "lexicon_csv",
+                        "in": "formData",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "303": {
+                        "description": "Перенаправление на страницу языка после успешного обновления"
+                    },
+                    "400": {
+                        "description": "Неверный ID или пустой лексикон"
+                    },
+                    "500": {
+                        "description": "Ошибка сервера"
+                    }
+                }
+            }
+        }
+    },
+    "definitions": {
+        "ds.Lang": {
+            "type": "object",
+            "properties": {
+                "description": {
+                    "type": "string"
+                },
+                "family": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "integer"
+                },
+                "lexicon": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "name": {
+                    "type": "string"
+                },
+                "photoKey": {
+                    "type": "string"
+                },
+                "status": {
+                    "description": "для удаления языка",
+                    "type": "string"
+                },
+                "subgroup": {
+                    "type": "string"
+                },
+                "writingFamily": {
+                    "type": "string"
+                }
+            }
+        },
+        "ds.LangCalculation": {
+            "type": "object",
+            "properties": {
+                "baseLanguageID": {
+                    "type": "integer"
+                },
+                "dateCreate": {
+                    "type": "string"
+                },
+                "dateFinish": {
+                    "type": "string"
+                },
+                "dateUpdate": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "integer"
+                },
+                "languages": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/ds.LangCalculationLanguage"
+                    }
+                },
+                "linguistID": {
+                    "type": "integer"
+                },
+                "researcherID": {
+                    "type": "integer"
+                },
+                "resultYearsAgo": {
+                    "type": "integer"
+                },
+                "similarityRate": {
+                    "type": "number"
+                },
+                "status": {
+                    "type": "string"
+                }
+            }
+        },
+        "ds.LangCalculationLanguage": {
+            "type": "object",
+            "properties": {
+                "id": {
+                    "type": "integer"
+                },
+                "isBase": {
+                    "type": "boolean"
+                },
+                "langCalculationID": {
+                    "type": "integer"
+                },
+                "language": {
+                    "$ref": "#/definitions/ds.Lang"
+                },
+                "languageID": {
+                    "type": "integer"
+                }
+            }
+        }
+    },
+    "securityDefinitions": {
+        "ApiKeyAuth": {
+            "description": "Введите токен JWT (например: Bearer \u003ctoken\u003e)",
+            "type": "apiKey",
+            "name": "Authorization",
+            "in": "header"
+        },
+        "CookieAuth": {
+            "description": "Введите куку сессии (например: session_id=\u003cvalue\u003e)",
+            "type": "apiKey",
+            "name": "Cookie",
+            "in": "header"
+        }
+    }
+}
