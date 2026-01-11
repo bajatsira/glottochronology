@@ -1,5 +1,14 @@
 ServiceHost = "localhost" 
 ServicePort = 8082
+
 [jwt]
-private_key_path = "priv.pem"
-public_key_path = "pub.pem"
+token = "super-secret-key-123"
+expires_in = "24h"             # Обязательно в кавычках и с суффиксом (h, m, s)
+signing_method = "HS256"
+
+[MinIO]
+Endpoint = "localhost:9000"
+AccessKeyID = "minioadmin"
+SecretAccessKey = "minioadmin"
+UseSSL = false
+BucketName = "particles"

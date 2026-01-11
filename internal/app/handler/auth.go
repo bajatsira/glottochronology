@@ -3,11 +3,16 @@ package handler
 import (
 	"context"
 	"net/http"
+	_"fmt"
+	_"time"
+	
 
 	"LAB1/internal/app/auth"
 	"LAB1/internal/app/ds"
 
 	"github.com/gin-gonic/gin"
+	_"github.com/golang-jwt/jwt/v5"
+
 )
 
 /*
@@ -183,6 +188,88 @@ func (h *Handler) ApiLogin(c *gin.Context) {
 		},
 	})
 }
+
+
+type loginReq struct {
+	Email    string `json:"email"`
+	Password string `json:"password"`
+}
+
+type loginResp struct {
+	ExpiresIn   int64  `json:"expires_in"`
+	AccessToken string `json:"access_token"`
+	TokenType   string `json:"token_type"`
+}
+/*
+func (h *Handler) Login(gCtx *gin.Context) {
+	cfg := h.Config
+	req := &loginReq{}
+
+	// Декодируем тело запроса
+	err := json.NewDecoder(gCtx.Request.Body).Decode(req)
+	if err != nil {
+		gCtx.AbortWithError(http.StatusBadRequest, err)
+		return
+	}
+
+	// Ищем пользователя в БД по Email
+	user, err := h.Repository.GetUserByEmail(req.Email)
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			gCtx.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{
+				"status":      "error",
+				"description": "invalid email or password",
+			})
+		} else {
+			gCtx.AbortWithError(http.StatusInternalServerError, err)
+		}
+		return
+	}
+
+	// Проверяем email и хеш пароля (bcrypt)
+	if req.Email == user.Email && bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(req.Password)) == nil {
+		
+		// Создаем Claims на основе вашей структуры ds.JWTClaims
+		claims := &ds.JWTClaims{
+			RegisteredClaims: jwt.RegisteredClaims{
+				ExpiresAt: jwt.NewNumericDate(time.Now().Add(cfg.JWT.ExpiresIn)),
+				IssuedAt:  jwt.NewNumericDate(time.Now()),
+				Issuer:    "bitop-admin", // можно заменить на ваше название приложения
+			},
+			UserUUID:   user.ID,         // Предполагаем, что user.ID имеет тип uuid.UUID
+			IsLinguist: user.IsLinguist, // Заменили IsProfessor на IsLinguist
+		}
+
+		// Создаем токен (HS256)
+		token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
+
+		if token == nil {
+			gCtx.AbortWithError(http.StatusInternalServerError, fmt.Errorf("token is nil"))
+			return
+		}
+
+		// Подписываем токен секретной строкой из конфига
+		strToken, err := token.SignedString([]byte(cfg.JWT.Token))
+		if err != nil {
+			gCtx.AbortWithError(http.StatusInternalServerError, fmt.Errorf("cant create str token"))
+			return
+		}
+
+		// Возвращаем ответ в требуемом формате
+		gCtx.JSON(http.StatusOK, loginResp{
+			ExpiresIn:   int64(cfg.JWT.ExpiresIn.Seconds()),
+			AccessToken: strToken,
+			TokenType:   "Bearer",
+		})
+		return
+	}
+
+	// Если пароль не подошел
+	gCtx.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{
+		"status":      "error",
+		"description": "invalid email or password",
+	})
+}*/
 
 func (h *Handler) ApiLogout(c *gin.Context) {
 	if sid, err := c.Cookie("session_id"); err == nil {

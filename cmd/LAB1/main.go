@@ -12,8 +12,6 @@ import (
 
 	"github.com/joho/godotenv"
 
-	"os"
-
 	"github.com/gin-gonic/gin"
 	"github.com/sirupsen/logrus"
 )
@@ -46,16 +44,13 @@ func main() {
 		logrus.Fatalf("error loading config: %v", err)
 	}
 
-	/*if err := auth.InitRedis(os.Getenv("REDIS_ADDR")); err != nil {
-		logrus.Warnf("redis not initialized: %v", err)
-	}*/
+	auth.Init(conf)
+	/*
+		if err := auth.InitRedis(os.Getenv("localhost:6379")); err != nil {
+			logrus.Fatalf("redis not initialized: %v", err)
+		}*/
 
-	// 2. Инициализация JWT (Закрытый/Открытый ключи) 🔑 <--- ЭТОТ БЛОК ДОБАВИТЬ
-	/*if err := auth.InitJWT(conf.JWT.PrivateKeyPath, conf.JWT.PublicKeyPath); err != nil { // <-- ИСПРАВЛЕНО: Теперь conf.JWT существует
-		logrus.Fatalf("error initializing JWT: %v", err)
-	}*/
-
-	if err := auth.InitRedis(os.Getenv("localhost:6379")); err != nil {
+	if err := auth.InitRedis("localhost:6379"); err != nil {
 		logrus.Fatalf("redis not initialized: %v", err)
 	}
 

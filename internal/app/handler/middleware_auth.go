@@ -9,7 +9,6 @@ import (
 	"LAB1/internal/app/repository"
 
 	"github.com/gin-gonic/gin"
-	"github.com/golang-jwt/jwt/v5"
 )
 
 type CurrentUser struct {
@@ -22,8 +21,53 @@ const CtxUserKey = "current_user"
 
 func AuthMiddleware(repo *repository.Repository) gin.HandlerFunc {
 	return func(c *gin.Context) {
+		// 1. Пытаемся авторизовать через JWT (Header)
+		authHeader := c.GetHeader("Authorization")
+		if strings.HasPrefix(strings.ToLower(authHeader), "bearer ") {
+			tokenStr := strings.TrimSpace(authHeader[7:])
 
-		// -------- 1) JWT Bearer --------
+			// Используем нашу новую функцию
+			claims, err := auth.ValidateToken(tokenStr)
+
+			if err == nil {
+				// Если токен валиден, берем UserID прямо из нашей структуры
+				uid := claims.UserID
+				if user, err := repo.GetUserByID(uid); err == nil {
+					c.Set(CtxUserKey, &CurrentUser{
+						ID:         user.ID,
+						Login:      user.Login,
+						IsLinguist: user.IsLinguist,
+					})
+					c.Next()
+					return
+				}
+			}
+		}
+
+		// 2. Если JWT нет или он невалиден, пытаемся через сессию (Cookie)
+		if sid, err := c.Cookie("session_id"); err == nil && sid != "" {
+			uid, err := auth.GetUserIDBySession(context.Background(), sid)
+			if err == nil && uid > 0 {
+				if user, err := repo.GetUserByID(uid); err == nil {
+					c.Set(CtxUserKey, &CurrentUser{
+						ID:         user.ID,
+						Login:      user.Login,
+						IsLinguist: user.IsLinguist,
+					})
+					c.Next()
+					return
+				}
+			}
+		}
+
+		// Если ничего не подошло, просто идем дальше (пользователь будет анонимным)
+		c.Next()
+	}
+}
+
+/*func AuthMiddleware(repo *repository.Repository) gin.HandlerFunc {
+	return func(c *gin.Context) {
+
 		authHeader := c.GetHeader("Authorization")
 		if strings.HasPrefix(strings.ToLower(authHeader), "bearer ") {
 			tokenStr := strings.TrimSpace(authHeader[7:])
@@ -48,7 +92,6 @@ func AuthMiddleware(repo *repository.Repository) gin.HandlerFunc {
 			}
 		}
 
-		// -------- 2) Cookie session --------
 		if sid, err := c.Cookie("session_id"); err == nil && sid != "" {
 			uid, err := auth.GetUserIDBySession(context.Background(), sid)
 			if err == nil && uid > 0 {
@@ -66,7 +109,7 @@ func AuthMiddleware(repo *repository.Repository) gin.HandlerFunc {
 
 		c.Next()
 	}
-}
+}*/
 
 func RequireAuth() gin.HandlerFunc {
 	return func(c *gin.Context) {
