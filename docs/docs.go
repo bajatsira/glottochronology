@@ -15,18 +15,80 @@ const docTemplate = `{
     "host": "{{.Host}}",
     "basePath": "{{.BasePath}}",
     "paths": {
-        "/api/glottos/{id}/complete": {
-            "put": {
-                "security": [
+        "/api/auth/login": {
+            "post": {
+                "description": "Вход в систему по логину и паролю. Возвращает JWT-токен и устанавливает сессионную куку.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Аутентификация"
+                ],
+                "summary": "Аутентификация пользователя",
+                "parameters": [
                     {
-                        "CookieAuth": []
-                    },
-                    {
-                        "BearerAuth": []
+                        "description": "Учетные данные пользователя",
+                        "name": "credentials",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "login": {
+                                    "type": "string"
+                                },
+                                "password": {
+                                    "type": "string"
+                                }
+                            }
+                        }
                     }
                 ],
-                "description": "Только лингвист может завершать заявку",
-                "responses": {}
+                "responses": {
+                    "200": {
+                        "description": "Успешный вход",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                " jwt": {
+                                    "type": "string"
+                                },
+                                " user": {
+                                    "type": "object",
+                                    "properties": {
+                                        " is_linguist": {
+                                            "type": "boolean"
+                                        },
+                                        " login": {
+                                            "type": "string"
+                                        },
+                                        "id": {
+                                            "type": "integer"
+                                        }
+                                    }
+                                },
+                                "message": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Неверные данные",
+                        "schema": {
+                            "type": "object"
+                        }
+                    },
+                    "401": {
+                        "description": "Неверный логин или пароль",
+                        "schema": {
+                            "type": "object"
+                        }
+                    }
+                }
             }
         },
         "/api/lang-calculation": {
@@ -40,9 +102,6 @@ const docTemplate = `{
                     }
                 ],
                 "description": "Получает список заявок. Гость: 401. Создатель: только свои заявки. Модератор: все заявки.",
-                "consumes": [
-                    "application/json"
-                ],
                 "produces": [
                     "application/json"
                 ],
@@ -53,7 +112,7 @@ const docTemplate = `{
                 "parameters": [
                     {
                         "type": "string",
-                        "description": "Фильтр по статусу заявки",
+                        "description": "Фильтр по статусу заявки (для модератора)",
                         "name": "status",
                         "in": "query"
                     }
@@ -102,6 +161,42 @@ const docTemplate = `{
                         "schema": {
                             "type": "object"
                         }
+                    }
+                }
+            }
+        },
+        "/api/lang-calculation/draft/count": {
+            "get": {
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    },
+                    {
+                        "CookieAuth": []
+                    }
+                ],
+                "description": "Возвращает количество языков в текущем черновике пользователя. Требуется авторизация.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Заявки (LangCalculation)"
+                ],
+                "summary": "Получить количество языков в черновике (корзине)",
+                "responses": {
+                    "200": {
+                        "description": "Количество языков в черновике",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "count": {
+                                    "type": "integer"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Требуется аутентификация"
                     }
                 }
             }
@@ -259,6 +354,81 @@ const docTemplate = `{
                 }
             }
         },
+        "/api/lang-calculation/{id}/complete": {
+            "put": {
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    },
+                    {
+                        "CookieAuth": []
+                    }
+                ],
+                "description": "Обновляет статус заявки на 'завершён' или 'отклонён'. Доступно только для Модератора/Лингвиста. При завершении, производит расчет.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Заявки (LangCalculation)"
+                ],
+                "summary": "Завершить или отклонить заявку (для Модератора)",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "ID заявки",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Действие: 'завершить' или 'отклонить'",
+                        "name": "action",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "action": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "Успешное обновление статуса"
+                    },
+                    "400": {
+                        "description": "Неверный ID или данные",
+                        "schema": {
+                            "type": "object"
+                        }
+                    },
+                    "401": {
+                        "description": "Требуется авторизация",
+                        "schema": {
+                            "type": "object"
+                        }
+                    },
+                    "403": {
+                        "description": "Недостаточно прав (не Модератор)",
+                        "schema": {
+                            "type": "object"
+                        }
+                    },
+                    "500": {
+                        "description": "Ошибка сервера",
+                        "schema": {
+                            "type": "object"
+                        }
+                    }
+                }
+            }
+        },
         "/api/lang-calculation/{id}/form": {
             "put": {
                 "security": [
@@ -360,7 +530,7 @@ const docTemplate = `{
                         "CookieAuth": []
                     }
                 ],
-                "description": "Добавляет язык в текущий черновик пользователя. Требуется авторизация.",
+                "description": "Добавляет язык в текущий черновик пользователя. Если черновика нет, он создается. Требуется авторизация.",
                 "tags": [
                     "Заявки (LangCalculation)"
                 ],
@@ -797,53 +967,27 @@ const docTemplate = `{
                 }
             }
         },
-        "/auth/login": {
+        "/auth/logout": {
             "post": {
-                "description": "Вход в систему по логину и паролю. Возвращает JWT-токен и устанавливает сессионную куку.",
-                "consumes": [
-                    "application/json"
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    },
+                    {
+                        "CookieAuth": []
+                    }
                 ],
+                "description": "Удаляет сессию пользователя и очищает cookie.",
                 "produces": [
                     "application/json"
                 ],
                 "tags": [
                     "Аутентификация"
                 ],
-                "summary": "Аутентификация пользователя",
-                "parameters": [
-                    {
-                        "description": "Учетные данные пользователя",
-                        "name": "credentials",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "type": "object",
-                            "properties": {
-                                "login": {
-                                    "type": "string"
-                                },
-                                "password": {
-                                    "type": "string"
-                                }
-                            }
-                        }
-                    }
-                ],
+                "summary": "Выход из системы",
                 "responses": {
                     "200": {
-                        "description": "Успешный вход",
-                        "schema": {
-                            "type": "object"
-                        }
-                    },
-                    "400": {
-                        "description": "Неверные данные",
-                        "schema": {
-                            "type": "object"
-                        }
-                    },
-                    "401": {
-                        "description": "Неверный логин или пароль",
+                        "description": "Успешный выход",
                         "schema": {
                             "type": "object"
                         }
@@ -889,6 +1033,60 @@ const docTemplate = `{
                     },
                     "500": {
                         "description": "Ошибка сервера"
+                    }
+                }
+            }
+        },
+        "/users/register": {
+            "post": {
+                "description": "Создает нового пользователя с логином и паролем.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Аутентификация"
+                ],
+                "summary": "Регистрация нового пользователя",
+                "parameters": [
+                    {
+                        "description": "Данные для регистрации",
+                        "name": "user_credentials",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "login": {
+                                    "type": "string"
+                                },
+                                "password": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Успешная регистрация",
+                        "schema": {
+                            "type": "object"
+                        }
+                    },
+                    "400": {
+                        "description": "Неверные данные или пользователь уже существует",
+                        "schema": {
+                            "type": "object"
+                        }
+                    },
+                    "500": {
+                        "description": "Ошибка сервера",
+                        "schema": {
+                            "type": "object"
+                        }
                     }
                 }
             }
@@ -1013,7 +1211,7 @@ const docTemplate = `{
 var SwaggerInfo = &swag.Spec{
 	Version:          "1.0",
 	Host:             "localhost:8082",
-	BasePath:         "/api",
+	BasePath:         "/",
 	Schemes:          []string{},
 	Title:            "Language Annotation Backend API",
 	Description:      "Расчет времени расхождения языков методом глоттохронологии.",

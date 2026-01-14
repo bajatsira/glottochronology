@@ -227,7 +227,7 @@ AddServiceToDraft:
 - если нет — создаёт новый Glotto (status='черновик')
 - затем добавляет запись в glotto_languages (m-m)
 - защита от дублей через OnConflict DoNothing (UNIQUE (glotto_id, language_id))
-*/
+
 func (r *Repository) AddServiceToDraft(researcherID uint, languageID uint) error {
 	var g ds.LangCalculation
 
@@ -253,7 +253,7 @@ func (r *Repository) AddServiceToDraft(researcherID uint, languageID uint) error
 
 		} else {
 			return err
-		}*/
+		}
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			g = ds.LangCalculation{
 				Status:         "черновик",
@@ -282,7 +282,7 @@ func (r *Repository) AddServiceToDraft(researcherID uint, languageID uint) error
 	}
 
 	return nil
-}
+}*/
 
 // GetDraftByResearcher — получает черновик с подгрузкой языков (и самих Lang)
 func (r *Repository) GetDraftByResearcher(researcherID uint) (ds.LangCalculation, error) {
@@ -358,4 +358,73 @@ func (r *Repository) UpdateLanguage(id uint, updates map[string]interface{}) err
 func (r *Repository) DeleteLanguage(id uint) error {
 	// здесь только DB-удаление или флаг? Требование: "Удаление изображения встроено в метод удаления услуги"
 	return r.db.Delete(&ds.Lang{}, id).Error
+}
+
+// GetLangCountForUser - cчитает количество языков в черновике для конкретного пользователя
+func (r *Repository) GetLangCountForUser(researcherID uint) int64 {
+	var glottoID uint
+	var count int64
+
+	// Находим текущий черновик заявки исследователя
+	err := r.db.Model(&ds.LangCalculation{}).
+		Where("researcher_id = ? AND status = ?", researcherID, "черновик").
+		Select("id").
+		First(&glottoID).Error
+	if err != nil {
+		return 0 // Если черновика нет, то и языков в нем 0
+	}
+
+	// Считаем количество языков в этой заявке
+	err = r.db.Model(&ds.LangCalculationLanguage{}).
+		Where("lang_calculation_id = ?", glottoID).
+		Count(&count).Error
+	if err != nil {
+		logrus.Println("Error counting languages in LangCalculation request for user:", err)
+		return 0
+	}
+
+	return count
+}
+
+// AddServiceToDraft:
+// - ищет черновик (researcher_id + status='черновик')
+// - если нет — создаёт новый LangCalculation (status='черновик')
+// - затем добавляет запись в lang_calculation_languages (m-m)
+// - защита от дублей через OnConflict DoNothing
+func (r *Repository) AddServiceToDraft(researcherID uint, languageID uint) error {
+	var g ds.LangCalculation
+
+	// 1) попытаться найти существующий черновик
+	err := r.db.Where("researcher_id = ? AND status = ?", researcherID, "черновик").First(&g).Error
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			// создаём новый черновик
+			g = ds.LangCalculation{
+				Status:         "черновик",
+				BaseLanguageID: languageID,
+				DateCreate:     time.Now(),
+				ResearcherID:   researcherID,
+				// LinguistID будет назначен позже модератором
+			}
+			if err = r.db.Create(&g).Error; err != nil {
+				return err
+			}
+		} else {
+			return err
+		}
+	}
+
+	// 2) добавляем в m-m (lang_calculation_languages), избегаем дублей
+	glLang := ds.LangCalculationLanguage{
+		LangCalculationID: g.ID,
+		LanguageID:        languageID,
+		IsBase:            false,
+	}
+
+	// Используем ON CONFLICT DO NOTHING (если уникальный индекс настроен)
+	if err := r.db.Clauses(clause.OnConflict{DoNothing: true}).Create(&glLang).Error; err != nil {
+		return err
+	}
+
+	return nil
 }

@@ -1,4 +1,4 @@
-basePath: /api
+basePath: /
 definitions:
   ds.Lang:
     properties:
@@ -71,21 +71,62 @@ info:
   title: Language Annotation Backend API
   version: "1.0"
 paths:
-  /api/glottos/{id}/complete:
-    put:
-      description: Только лингвист может завершать заявку
-      responses: {}
-      security:
-      - CookieAuth: []
-      - BearerAuth: []
-  /api/lang-calculation:
-    get:
+  /api/auth/login:
+    post:
       consumes:
       - application/json
+      description: Вход в систему по логину и паролю. Возвращает JWT-токен и устанавливает
+        сессионную куку.
+      parameters:
+      - description: Учетные данные пользователя
+        in: body
+        name: credentials
+        required: true
+        schema:
+          properties:
+            login:
+              type: string
+            password:
+              type: string
+          type: object
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Успешный вход
+          schema:
+            properties:
+              ' jwt':
+                type: string
+              ' user':
+                properties:
+                  ' is_linguist':
+                    type: boolean
+                  ' login':
+                    type: string
+                  id:
+                    type: integer
+                type: object
+              message:
+                type: string
+            type: object
+        "400":
+          description: Неверные данные
+          schema:
+            type: object
+        "401":
+          description: Неверный логин или пароль
+          schema:
+            type: object
+      summary: Аутентификация пользователя
+      tags:
+      - Аутентификация
+  /api/lang-calculation:
+    get:
       description: 'Получает список заявок. Гость: 401. Создатель: только свои заявки.
         Модератор: все заявки.'
       parameters:
-      - description: Фильтр по статусу заявки
+      - description: Фильтр по статусу заявки (для модератора)
         in: query
         name: status
         type: string
@@ -208,6 +249,54 @@ paths:
       summary: Обновить поля заявки
       tags:
       - Заявки (LangCalculation)
+  /api/lang-calculation/{id}/complete:
+    put:
+      consumes:
+      - application/json
+      description: Обновляет статус заявки на 'завершён' или 'отклонён'. Доступно
+        только для Модератора/Лингвиста. При завершении, производит расчет.
+      parameters:
+      - description: ID заявки
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: 'Действие: ''завершить'' или ''отклонить'''
+        in: body
+        name: action
+        required: true
+        schema:
+          properties:
+            action:
+              type: string
+          type: object
+      produces:
+      - application/json
+      responses:
+        "204":
+          description: Успешное обновление статуса
+        "400":
+          description: Неверный ID или данные
+          schema:
+            type: object
+        "401":
+          description: Требуется авторизация
+          schema:
+            type: object
+        "403":
+          description: Недостаточно прав (не Модератор)
+          schema:
+            type: object
+        "500":
+          description: Ошибка сервера
+          schema:
+            type: object
+      security:
+      - ApiKeyAuth: []
+      - CookieAuth: []
+      summary: Завершить или отклонить заявку (для Модератора)
+      tags:
+      - Заявки (LangCalculation)
   /api/lang-calculation/{id}/form:
     put:
       description: Изменяет статус черновика на 'сформирована' или аналогичный. Требуется
@@ -261,7 +350,8 @@ paths:
       tags:
       - Заявки (LangCalculation)
     post:
-      description: Добавляет язык в текущий черновик пользователя. Требуется авторизация.
+      description: Добавляет язык в текущий черновик пользователя. Если черновика
+        нет, он создается. Требуется авторизация.
       parameters:
       - description: ID языка, который нужно добавить
         in: path
@@ -332,6 +422,28 @@ paths:
           schema:
             type: object
       summary: Получить статус черновика/корзины
+      tags:
+      - Заявки (LangCalculation)
+  /api/lang-calculation/draft/count:
+    get:
+      description: Возвращает количество языков в текущем черновике пользователя.
+        Требуется авторизация.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Количество языков в черновике
+          schema:
+            properties:
+              count:
+                type: integer
+            type: object
+        "401":
+          description: Требуется аутентификация
+      security:
+      - ApiKeyAuth: []
+      - CookieAuth: []
+      summary: Получить количество языков в черновике (корзине)
       tags:
       - Заявки (LangCalculation)
   /api/languages:
@@ -566,40 +678,20 @@ paths:
       summary: Загрузить изображение для языка
       tags:
       - Languages
-  /auth/login:
+  /auth/logout:
     post:
-      consumes:
-      - application/json
-      description: Вход в систему по логину и паролю. Возвращает JWT-токен и устанавливает
-        сессионную куку.
-      parameters:
-      - description: Учетные данные пользователя
-        in: body
-        name: credentials
-        required: true
-        schema:
-          properties:
-            login:
-              type: string
-            password:
-              type: string
-          type: object
+      description: Удаляет сессию пользователя и очищает cookie.
       produces:
       - application/json
       responses:
         "200":
-          description: Успешный вход
+          description: Успешный выход
           schema:
             type: object
-        "400":
-          description: Неверные данные
-          schema:
-            type: object
-        "401":
-          description: Неверный логин или пароль
-          schema:
-            type: object
-      summary: Аутентификация пользователя
+      security:
+      - ApiKeyAuth: []
+      - CookieAuth: []
+      summary: Выход из системы
       tags:
       - Аутентификация
   /languages/{id}/lexicon:
@@ -630,6 +722,41 @@ paths:
       summary: Обновить лексикон языка (через форму)
       tags:
       - Languages
+  /users/register:
+    post:
+      consumes:
+      - application/json
+      description: Создает нового пользователя с логином и паролем.
+      parameters:
+      - description: Данные для регистрации
+        in: body
+        name: user_credentials
+        required: true
+        schema:
+          properties:
+            login:
+              type: string
+            password:
+              type: string
+          type: object
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Успешная регистрация
+          schema:
+            type: object
+        "400":
+          description: Неверные данные или пользователь уже существует
+          schema:
+            type: object
+        "500":
+          description: Ошибка сервера
+          schema:
+            type: object
+      summary: Регистрация нового пользователя
+      tags:
+      - Аутентификация
 securityDefinitions:
   ApiKeyAuth:
     description: 'Введите токен JWT (например: Bearer <token>)'

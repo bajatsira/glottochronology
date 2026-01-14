@@ -2,17 +2,15 @@ package handler
 
 import (
 	"context"
+	_ "fmt"
 	"net/http"
-	_"fmt"
-	_"time"
-	
+	_ "time"
 
 	"LAB1/internal/app/auth"
 	"LAB1/internal/app/ds"
 
 	"github.com/gin-gonic/gin"
-	_"github.com/golang-jwt/jwt/v5"
-
+	_ "github.com/golang-jwt/jwt/v5"
 )
 
 /*
@@ -89,7 +87,7 @@ import (
 		c.SetCookie("session_id", "", -1, "/", "", false, true)
 		c.JSON(http.StatusOK, gin.H{"message": "logout ok"})
 	}
-*/
+
 func (h *Handler) ApiRegisterUser(c *gin.Context) {
 	var body struct {
 		Login    string `json:"login" binding:"required"`
@@ -228,7 +226,7 @@ func (h *Handler) Login(gCtx *gin.Context) {
 
 	// Проверяем email и хеш пароля (bcrypt)
 	if req.Email == user.Email && bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(req.Password)) == nil {
-		
+
 		// Создаем Claims на основе вашей структуры ds.JWTClaims
 		claims := &ds.JWTClaims{
 			RegisteredClaims: jwt.RegisteredClaims{
@@ -270,7 +268,142 @@ func (h *Handler) Login(gCtx *gin.Context) {
 		"description": "invalid email or password",
 	})
 }*/
+/*
+func (h *Handler) ApiLogout(c *gin.Context) {
+	if sid, err := c.Cookie("session_id"); err == nil {
+		_ = auth.DeleteSession(context.Background(), sid)
+	}
 
+	c.SetCookie("session_id", "", -1, "/", "", false, true)
+	c.JSON(http.StatusOK, gin.H{"message": "logout ok"})
+}
+*/
+
+// ApiRegisterUser godoc
+// @Summary Регистрация нового пользователя
+// @Description Создает нового пользователя с логином и паролем.
+// @Tags Аутентификация
+// @Accept  json
+// @Produce  json
+// @Param   user_credentials  body   object{login=string,password=string}  true  "Данные для регистрации"
+// @Success 201 {object} object "Успешная регистрация"
+// @Failure 400 {object} object "Неверные данные или пользователь уже существует"
+// @Failure 500 {object} object "Ошибка сервера"
+// @Router /users/register [post]
+func (h *Handler) ApiRegisterUser(c *gin.Context) {
+	var body struct {
+		Login    string `json:"login" binding:"required"`
+		Password string `json:"password" binding:"required"`
+	}
+
+	if err := c.ShouldBindJSON(&body); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	// Хэшируем пароль
+	hash, err := auth.HashPassword(body.Password)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "could not hash password"})
+		return
+	}
+
+	user := &ds.Users{
+		Login:      body.Login,
+		Password:   hash,  // Сохраняем хэш
+		IsLinguist: false, // Новые пользователи не являются лингвистами по умолчанию
+	}
+
+	if err := h.Repository.CreateUser(user); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "failed to create user, maybe login exists"})
+		return
+	}
+
+	c.JSON(http.StatusCreated, gin.H{
+		"id":          user.ID,
+		"login":       user.Login,
+		"is_linguist": user.IsLinguist,
+	})
+}
+
+// ApiLogin godoc
+// @Summary Аутентификация пользователя
+// @Description Вход в систему по логину и паролю. Возвращает JWT-токен и устанавливает сессионную куку.
+// @Tags Аутентификация
+// @Accept  json
+// @Produce  json
+// @Param   credentials  body   object{login=string,password=string} true "Учетные данные пользователя"
+// @Success 200 {object} object{message=string, jwt=string, user=object{id=integer, login=string, is_linguist=boolean}} "Успешный вход"
+// @Failure 400 {object} object "Неверные данные"
+// @Failure 401 {object} object "Неверный логин или пароль"
+// @Router /api/auth/login [post]
+func (h *Handler) ApiLogin(c *gin.Context) {
+	var body struct {
+		Login    string `json:"login" binding:"required"`
+		Password string `json:"password" binding:"required"`
+	}
+
+	if err := c.ShouldBindJSON(&body); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	user, err := h.Repository.GetUserByLogin(body.Login)
+	if err != nil {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "invalid credentials"})
+		return
+	}
+
+	// Сравниваем хэш пароля из БД с паролем из запроса
+	if !auth.ComparePassword(user.Password, body.Password) {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "invalid credentials"})
+		return
+	}
+
+	// Создаем сессию
+	sid, err := auth.CreateSession(context.Background(), user.ID)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "session create failed"})
+		return
+	}
+
+	// Устанавливаем cookie
+	c.SetCookie(
+		"session_id",
+		sid,
+		auth.SessionTTLSeconds(),
+		"/",
+		"",
+		false,
+		true,
+	)
+
+	// Генерируем JWT токен
+	token, err := auth.GenerateJWT(user.ID, user.IsLinguist)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "JWT generation failed: " + err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{
+		"message": "ok",
+		"jwt":     token,
+		"user": gin.H{
+			"id":          user.ID,
+			"login":       user.Login,
+			"is_linguist": user.IsLinguist,
+		},
+	})
+}
+
+// ApiLogout godoc
+// @Summary Выход из системы
+// @Description Удаляет сессию пользователя и очищает cookie.
+// @Tags Аутентификация
+// @Produce  json
+// @Success 200 {object} object "Успешный выход"
+// @Security ApiKeyAuth
+// @Security CookieAuth
+// @Router /auth/logout [post]
 func (h *Handler) ApiLogout(c *gin.Context) {
 	if sid, err := c.Cookie("session_id"); err == nil {
 		_ = auth.DeleteSession(context.Background(), sid)

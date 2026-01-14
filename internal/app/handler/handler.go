@@ -73,6 +73,8 @@ func (h *Handler) RegisterHandler(router *gin.Engine) {
 
 }*/
 
+/*
+
 func (h *Handler) RegisterHandler(router *gin.Engine) {
 
 	// 1. ПРИМЕНЕНИЕ ГЛОБАЛЬНОГО MIDDLEWARE АУТЕНТИФИКАЦИИ
@@ -145,6 +147,40 @@ func (h *Handler) RegisterHandler(router *gin.Engine) {
 	// --- Домен Аутентификация ---
 	api.POST("/auth/login", h.ApiLogin)                  // POST аутентификация (Публичный)
 	api.POST("/auth/logout", RequireAuth(), h.ApiLogout) // POST деавторизация (Требует авторизации для очистки сессии)
+}
+*/
+
+func (h *Handler) RegisterHandler(router *gin.Engine) {
+	// --- Swagger ---
+	//router.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
+
+	// --- Домен Языки ---
+	langs := router.Group("/api/langs")
+	{
+		langs.GET("/", h.ApiGetLangs)
+		langs.GET("/:id", h.ApiGetLang)
+		langs.POST("/", RequireLinguist(), h.ApiCreateLang)
+		langs.PUT("/:id", RequireLinguist(), h.ApiUpdateLang)
+		langs.DELETE("/:id", RequireLinguist(), h.ApiDeleteLang)
+	}
+
+	// --- Домен Заявки + Корзина ---
+	api := router.Group("/api")
+	api.GET("/lang-calculation", RequireAuth(), h.ApiGetGlottos)
+	api.GET("/lang-calculation/draft/count", RequireAuth(), h.ApiGetGlottoDraftCount) // <--- ВОТ НОВЫЙ МАРШРУТ
+	api.POST("/lang-calculation/:id/langs", RequireAuth(), h.ApiAddServiceToGlotto)
+	api.PUT("/lang-calculation/:id/complete", RequireLinguist(), h.ApiCompleteLangCalculation)
+	api.DELETE("/lang-calculation/:id", RequireAuth(), h.ApiDeleteGlotto)
+
+	// --- Домен Аутентификация ---
+	api.POST("/auth/login", h.ApiLogin)
+	api.POST("/auth/logout", RequireAuth(), h.ApiLogout)
+
+	// --- Домен Пользователи (для регистрации) ---
+	users := router.Group("/users")
+	{
+		users.POST("/register", h.ApiRegisterUser)
+	}
 }
 
 // RegisterStatic То же самое, что и с маршрутами, регистрируем статику

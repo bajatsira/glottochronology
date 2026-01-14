@@ -254,9 +254,8 @@ func (h *Handler) ApiGetGlottos(c *gin.Context) {
 // @Summary Получить список заявок
 // @Description Получает список заявок. Гость: 401. Создатель: только свои заявки. Модератор: все заявки.
 // @Tags Заявки (LangCalculation)
-// @Accept  json
 // @Produce  json
-// @Param   status  query   string  false  "Фильтр по статусу заявки"
+// @Param   status  query   string  false  "Фильтр по статусу заявки (для модератора)"
 // @Success 200 {array} ds.LangCalculation "Успешное получение списка заявок"
 // @Failure 401 {object} object "Требуется аутентификация"
 // @Failure 500 {object} object "Ошибка сервера"
@@ -264,22 +263,12 @@ func (h *Handler) ApiGetGlottos(c *gin.Context) {
 // @Security ApiKeyAuth
 // @Security CookieAuth
 func (h *Handler) ApiGetGlottos(c *gin.Context) {
-
-	// 1. Извлекаем пользователя из контекста
-	v, exists := c.Get(CtxUserKey)
-
-	// currentUser — указатель, может быть nil
-	var currentUser *CurrentUser
-	if exists {
-		currentUser = v.(*CurrentUser) // ← ВАЖНО: тип *CurrentUser
-	}
+	v, _ := c.Get(CtxUserKey)
+	currentUser := v.(*CurrentUser)
 
 	status := c.Query("status")
 
-	// -------------------------
-	// 2. Модератор → видит все
-	// -------------------------
-	if currentUser != nil && currentUser.IsLinguist {
+	if currentUser.IsLinguist {
 		glottos, err := h.Repository.GetGlottosFiltered(status, nil, nil)
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
@@ -289,17 +278,6 @@ func (h *Handler) ApiGetGlottos(c *gin.Context) {
 		return
 	}
 
-	// ---------------------------------------------------
-	// 3. Гость (нет авторизации) → 401 Unauthorized
-	// ---------------------------------------------------
-	if currentUser == nil {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "authentication required"})
-		return
-	}
-
-	// ---------------------------------------------------------
-	// 4. Создатель → получает только свои собственные заявки
-	// ---------------------------------------------------------
 	glottos, err := h.Repository.GetLangCalculationsByResearcher(currentUser.ID, status)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
@@ -307,6 +285,26 @@ func (h *Handler) ApiGetGlottos(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, glottos)
+}
+
+// ApiGetGlottoDraftCount godoc
+// @Summary Получить количество языков в черновике (корзине)
+// @Description Возвращает количество языков в текущем черновике пользователя. Требуется авторизация.
+// @Tags Заявки (LangCalculation)
+// @Produce  json
+// @Success 200 {object} object{count=int} "Количество языков в черновике"
+// @Failure 401 "Требуется аутентификация"
+// @Router /api/lang-calculation/draft/count [get]
+// @Security ApiKeyAuth
+// @Security CookieAuth
+func (h *Handler) ApiGetGlottoDraftCount(c *gin.Context) {
+	v, _ := c.Get(CtxUserKey)
+	currentUser := v.(*CurrentUser)
+
+	// Используем GetLangCountForUser с ID текущего пользователя
+	count := h.Repository.GetLangCountForUser(currentUser.ID)
+
+	c.JSON(http.StatusOK, gin.H{"count": count})
 }
 
 // ApiGetGlotto godoc
@@ -361,7 +359,7 @@ func (h *Handler) ApiGetCartIcon(c *gin.Context) {
 
 // ApiAddServiceToGlotto godoc
 // @Summary Добавить язык в черновик (корзину)
-// @Description Добавляет язык в текущий черновик пользователя. Требуется авторизация.
+// @Description Добавляет язык в текущий черновик пользователя. Если черновика нет, он создается. Требуется авторизация.
 // @Tags Заявки (LangCalculation)
 // @Param   id   path   int  true  "ID языка, который нужно добавить"
 // @Success 204 "Успешное добавление"
@@ -378,8 +376,13 @@ func (h *Handler) ApiAddServiceToGlotto(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid id"})
 		return
 	}
-	researcherID := uint(1)
-	if err := h.Repository.AddServiceToDraft(researcherID, uint(langID)); err != nil {
+
+	// Получаем текущего пользователя из контекста
+	v, _ := c.Get(CtxUserKey)
+	currentUser := v.(*CurrentUser)
+
+	// Используем ID текущего пользователя
+	if err := h.Repository.AddServiceToDraft(currentUser.ID, uint(langID)); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
@@ -557,12 +560,23 @@ func (h *Handler) ApiCompleteGlotto(c *gin.Context) {
 	c.Status(http.StatusNoContent)
 }
 
+// ApiCompleteLangCalculation godoc
+// @Summary Завершить или отклонить заявку (для Модератора)
+// @Description Обновляет статус заявки на 'завершён' или 'отклонён'. Доступно только для Модератора/Лингвиста. При завершении, производит расчет.
+// @Tags Заявки (LangCalculation)
+// @Accept  json
+// @Produce  json
+// @Param   id   path   int  true  "ID заявки"
+// @Param   action body object{action=string} true "Действие: 'завершить' или 'отклонить'"
+// @Success 204 "Успешное обновление статуса"
+// @Failure 400 {object} object "Неверный ID или данные"
+// @Failure 401 {object} object "Требуется авторизация"
+// @Failure 403 {object} object "Недостаточно прав (не Модератор)"
+// @Failure 500 {object} object "Ошибка сервера"
+// @Router /api/lang-calculation/{id}/complete [put]
+// @Security ApiKeyAuth
 // @Security CookieAuth
-// @Security BearerAuth
-// @Description Только лингвист может завершать заявку
-// @Router /api/glottos/{id}/complete [put]
 func (h *Handler) ApiCompleteLangCalculation(c *gin.Context) {
-	// 1. Получаем ID расчёта из пути
 	idStr := c.Param("id")
 	id, err := strconv.Atoi(idStr)
 	if err != nil {
@@ -578,17 +592,9 @@ func (h *Handler) ApiCompleteLangCalculation(c *gin.Context) {
 		return
 	}
 
-	v, ok := c.Get(CtxUserKey)
-	if !ok || v == nil {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "auth required"})
-		return
-	}
+	// Middleware RequireLinguist уже проверил права, но для надежности можно оставить.
+	v, _ := c.Get(CtxUserKey)
 	current := v.(*CurrentUser)
-
-	if !current.IsLinguist {
-		c.JSON(http.StatusForbidden, gin.H{"error": "linguist required"})
-		return
-	}
 
 	if err := h.Repository.CompleteLangCalculation(uint(id), current.ID, body.Action); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})

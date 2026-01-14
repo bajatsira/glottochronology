@@ -20,7 +20,7 @@ import (
 // @version 1.0
 // @description Расчет времени расхождения языков методом глоттохронологии.
 // @host localhost:8082
-// @BasePath /api
+// @BasePath /
 
 // @securityDefinitions.apikey ApiKeyAuth
 // @in header

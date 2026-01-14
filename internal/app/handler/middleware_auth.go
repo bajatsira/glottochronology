@@ -17,7 +17,7 @@ type CurrentUser struct {
 	IsLinguist bool
 }
 
-const CtxUserKey = "current_user"
+const CtxUserKey = "user"
 
 func AuthMiddleware(repo *repository.Repository) gin.HandlerFunc {
 	return func(c *gin.Context) {
@@ -111,13 +111,39 @@ func AuthMiddleware(repo *repository.Repository) gin.HandlerFunc {
 	}
 }*/
 
+// RequireAuth — это middleware для проверки JWT токена
 func RequireAuth() gin.HandlerFunc {
 	return func(c *gin.Context) {
-		if v, ok := c.Get(CtxUserKey); !ok || v == nil {
-			c.JSON(http.StatusUnauthorized, gin.H{"error": "authentication required"})
-			c.Abort()
+		// 1. Получаем заголовок Authorization
+		authHeader := c.GetHeader("Authorization")
+		if authHeader == "" {
+			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "authentication required"})
 			return
 		}
+
+		// 2. Проверяем, что заголовок имеет формат "Bearer <token>"
+		parts := strings.Split(authHeader, " ")
+		if len(parts) != 2 || parts[0] != "Bearer" {
+			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "invalid authorization header format"})
+			return
+		}
+
+		tokenString := parts[1]
+
+		// 3. Валидируем JWT токен
+		claims, err := auth.ValidateToken(tokenString)
+		if err != nil {
+			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "invalid token"})
+			return
+		}
+
+		// 4. Сохраняем информацию о пользователе в контекст для следующих обработчиков
+		c.Set(CtxUserKey, &CurrentUser{
+			ID:         claims.UserID,
+			IsLinguist: claims.IsLinguist,
+		})
+
+		// 5. Передаем управление дальше
 		c.Next()
 	}
 }
