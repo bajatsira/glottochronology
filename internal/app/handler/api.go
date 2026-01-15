@@ -561,22 +561,27 @@ func (h *Handler) ApiCompleteGlotto(c *gin.Context) {
 }
 
 // ApiCompleteLangCalculation godoc
-// @Summary Завершить или отклонить заявку (для Модератора)
-// @Description Обновляет статус заявки на 'завершён' или 'отклонён'. Доступно только для Модератора/Лингвиста. При завершении, производит расчет.
-// @Tags Заявки (LangCalculation)
-// @Accept  json
-// @Produce  json
-// @Param   id   path   int  true  "ID заявки"
-// @Param   action body object{action=string} true "Действие: 'завершить' или 'отклонить'"
-// @Success 204 "Успешное обновление статуса"
-// @Failure 400 {object} object "Неверный ID или данные"
-// @Failure 401 {object} object "Требуется авторизация"
-// @Failure 403 {object} object "Недостаточно прав (не Модератор)"
-// @Failure 500 {object} object "Ошибка сервера"
-// @Router /api/lang-calculation/{id}/complete [put]
-// @Security ApiKeyAuth
-// @Security CookieAuth
+// @Summary      Завершить или отклонить заявку (для Модератора)
+// @Description  Обновляет статус заявки на 'завершён' или 'отклонён'. Доступно только для Модератора/Лингвиста. При завершении, производит расчет.
+// @Tags         Заявки (LangCalculation)
+// @Accept       json
+// @Produce      json
+// @Param        id      path      int                  true  "ID заявки"
+// @Param        action  body      object{action=string}  true  "Действие: 'завершить' или 'отклонить'"
+// @Success      204     "Успешное обновление статуса"
+// @Failure      400     {object}  object "Неверный ID или данные"
+// @Failure      401     {object}  object "Требуется аутентификация"
+// @Failure      403     {object}  object "Недостаточно прав (не Модератор)"
+// @Failure      500     {object}  object "Ошибка сервера"
+// @Router       /api/lang-calculation/{id}/complete [put]
+// @Security     ApiKeyAuth
+// @Security     CookieAuth
 func (h *Handler) ApiCompleteLangCalculation(c *gin.Context) {
+
+	if c.IsAborted() {
+		return
+	}
+
 	idStr := c.Param("id")
 	id, err := strconv.Atoi(idStr)
 	if err != nil {
@@ -587,12 +592,12 @@ func (h *Handler) ApiCompleteLangCalculation(c *gin.Context) {
 	var body struct {
 		Action string `json:"action"`
 	}
+	// Именно эта строка вызывала ошибку EOF
 	if err := c.ShouldBindJSON(&body); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
 
-	// Middleware RequireLinguist уже проверил права, но для надежности можно оставить.
 	v, _ := c.Get(CtxUserKey)
 	current := v.(*CurrentUser)
 
