@@ -428,3 +428,42 @@ func (r *Repository) AddServiceToDraft(researcherID uint, languageID uint) error
 
 	return nil
 }
+
+// SetBaseLanguage устанавливает указанный язык как базовый для заявки.
+// Все остальные языки в этой заявке автоматически перестают быть базовыми.
+func (r *Repository) SetBaseLanguage(calculationID uint, languageID uint, researcherID uint) error {
+	return r.db.Transaction(func(tx *gorm.DB) error {
+		// 1. Проверяем, что пользователь является владельцем черновика.
+		if err := tx.Model(&ds.LangCalculation{}).
+			Where("id = ? AND researcher_id = ? AND status = ?", calculationID, researcherID, "черновик").
+			First(&ds.LangCalculation{}).Error; err != nil {
+			if errors.Is(err, gorm.ErrRecordNotFound) {
+				return errors.New("draft not found or you are not the owner")
+			}
+			return err
+		}
+
+		// 1.5 Проверяем, что этот язык вообще есть в этой заявке
+		var count int64
+		tx.Model(&ds.LangCalculationLanguage{}).Where("lang_calculation_id = ? AND language_id = ?", calculationID, languageID).Count(&count)
+		if count == 0 {
+			return errors.New("language is not part of this calculation")
+		}
+
+		// 2. Сбрасываем IsBase = false для ВСЕХ языков в этой заявке.
+		if err := tx.Model(&ds.LangCalculationLanguage{}).
+			Where("lang_calculation_id = ?", calculationID).
+			Update("is_base", false).Error; err != nil {
+			return err
+		}
+
+		// 3. Устанавливаем IsBase = true для ОДНОГО конкретного языка.
+		if err := tx.Model(&ds.LangCalculationLanguage{}).
+			Where("lang_calculation_id = ? AND language_id = ?", calculationID, languageID).
+			Update("is_base", true).Error; err != nil {
+			return err
+		}
+
+		return nil // Если ошибок нет, транзакция завершается успешно.
+	})
+}

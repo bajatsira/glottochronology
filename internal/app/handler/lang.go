@@ -114,20 +114,33 @@ func (h *Handler) AddLanguageToDraft(ctx *gin.Context) {
 	ctx.Redirect(http.StatusFound, "/languages")
 }
 
-// GetDraft — показывает содержимое текущей заявки (черновика)
+// GetDraft — показывает содержимое текущей заявки (черновика) ТЕКУЩЕГО пользователя.
 func (h *Handler) GetDraft(ctx *gin.Context) {
-	researcherID := uint(1) // временно захардкодим
-
-	LangCalculation, err := h.Repository.GetDraftByResearcher(researcherID)
-	if err != nil {
-		logrus.Error("Ошибка при получении черновика:", err)
-		ctx.JSON(http.StatusInternalServerError, gin.H{"error": "Не удалось получить черновик заявки"})
+	// 1. Получаем текущего пользователя из контекста.
+	// Этот код предполагает, что маршрут, ведущий сюда, защищен middleware'ом RequireAuth().
+	v, exists := ctx.Get(CtxUserKey)
+	if !exists {
+		// Если пользователя нет, отправляем на страницу логина или показываем ошибку.
+		ctx.Redirect(http.StatusFound, "/login") // Пример редиректа
 		return
 	}
+	currentUser := v.(*CurrentUser)
+
+	// 2. Используем ID ТЕКУЩЕГО пользователя.
+	langCalculation, err := h.Repository.GetDraftByResearcher(currentUser.ID)
+	if err != nil {
+		// Ошибки здесь могут быть, например, если у пользователя еще нет черновика.
+		// Это не обязательно ошибка сервера, можно просто показать пустую корзину.
+		// Но для простоты пока оставим лог.
+		logrus.Warn("Не удалось получить черновик для пользователя ", currentUser.ID, ": ", err)
+	}
+
+	// 3. Используем ПРАВИЛЬНУЮ функцию для подсчета.
+	cartCount := h.Repository.GetLangCountForUser(currentUser.ID)
 
 	ctx.HTML(http.StatusOK, "chronos.html", gin.H{
-		"LangCalculation": LangCalculation,
-		"cart_count":      h.Repository.GetLangCount(),
+		"LangCalculation": langCalculation, // Будет nil, если черновика нет. Шаблон должен это обработать.
+		"cart_count":      cartCount,
 	})
 }
 

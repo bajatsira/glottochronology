@@ -492,16 +492,17 @@ func (h *Handler) ApiUpdateGlotto(c *gin.Context) {
 }
 
 // ApiFormGlotto godoc
-// @Summary Сформировать черновик в заявку
-// @Description Изменяет статус черновика на 'сформирована' или аналогичный. Требуется авторизация.
-// @Tags Заявки (LangCalculation)
-// @Param   id   path   int  true  "ID заявки (черновика)"
-// @Success 204 "Успешное формирование"
-// @Failure 400 "Ошибка формирования (например, пустой черновик)"
-// @Failure 401 "Требуется авторизация"
-// @Router /api/lang-calculation/{id}/form [put]
-// @Security ApiKeyAuth
-// @Security CookieAuth
+// @Summary      Сформировать (отправить) заявку
+// @Description  Изменяет статус черновика на 'сформирован', устанавливает дату формирования. Проверяет, что заявка не пуста.
+// @Tags         Заявки (LangCalculation)
+// @Param        id   path      int  true  "ID заявки"
+// @Success      204  "Успешное формирование"
+// @Failure      400  {object}  object{error=string} "Ошибка валидации (например, пустая заявка)"
+// @Failure      403  {object}  object{error=string} "Доступ запрещен (вы не владелец)"
+// @Failure      401  "Требуется аутентификация"
+// @Router       /api/lang-calculation/{id}/form [put]
+// @Security     ApiKeyAuth
+// @Security     CookieAuth
 func (h *Handler) ApiFormGlotto(c *gin.Context) {
 	idStr := c.Param("id")
 	id, err := strconv.Atoi(idStr)
@@ -509,11 +510,19 @@ func (h *Handler) ApiFormGlotto(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid id"})
 		return
 	}
-	researcherID := uint(1)
-	if err := h.Repository.FormGlotto(uint(id), researcherID); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+
+	v, _ := c.Get(CtxUserKey)
+	currentUser := v.(*CurrentUser)
+
+	if err := h.Repository.FormGlotto(uint(id), currentUser.ID); err != nil {
+		if strings.Contains(err.Error(), "empty request") {
+			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		} else {
+			c.JSON(http.StatusForbidden, gin.H{"error": err.Error()})
+		}
 		return
 	}
+
 	c.Status(http.StatusNoContent)
 }
 
@@ -560,6 +569,42 @@ func (h *Handler) ApiCompleteGlotto(c *gin.Context) {
 	c.Status(http.StatusNoContent)
 }
 
+// ApiSetBaseLanguage godoc
+// @Summary      Назначить базовый язык для заявки
+// @Description  Устанавливает один из языков в черновике как базовый. Доступно только для создателя.
+// @Tags         Заявки (LangCalculation)
+// @Param        calculation_id path int true "ID заявки (черновика)"
+// @Param        language_id    path int true "ID языка, который должен стать базовым"
+// @Success      204 "Базовый язык успешно назначен"
+// @Failure      403 "Доступ запрещен (вы не владелец или заявка не черновик)"
+// @Failure      401 "Требуется аутентификация"
+// @Router       /api/lang-calculation/{calculation_id}/base/{language_id} [put]
+// @Security     ApiKeyAuth
+// @Security     CookieAuth
+func (h *Handler) ApiSetBaseLanguage(c *gin.Context) {
+	calcIDStr := c.Param("id")
+	langIDStr := c.Param("language_id")
+
+	calcID, err1 := strconv.Atoi(calcIDStr)
+	langID, err2 := strconv.Atoi(langIDStr)
+	if err1 != nil || err2 != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid ID format"})
+		return
+	}
+
+	// Получаем текущего пользователя из контекста.
+	v, _ := c.Get(CtxUserKey)
+	currentUser := v.(*CurrentUser)
+
+	// Вызываем новый метод репозитория.
+	if err := h.Repository.SetBaseLanguage(uint(calcID), uint(langID), currentUser.ID); err != nil {
+		c.JSON(http.StatusForbidden, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.Status(http.StatusNoContent)
+}
+
 // ApiCompleteLangCalculation godoc
 // @Summary      Завершить или отклонить заявку (для Модератора)
 // @Description  Обновляет статус заявки на 'завершён' или 'отклонён'. Доступно только для Модератора/Лингвиста. При завершении, производит расчет.
@@ -592,7 +637,6 @@ func (h *Handler) ApiCompleteLangCalculation(c *gin.Context) {
 	var body struct {
 		Action string `json:"action"`
 	}
-	// Именно эта строка вызывала ошибку EOF
 	if err := c.ShouldBindJSON(&body); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return

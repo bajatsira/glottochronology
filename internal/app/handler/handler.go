@@ -36,6 +36,8 @@ func (h *Handler) RegisterHandler(router *gin.Engine) {
 	api.GET("/lang-calculation/draft/count", RequireAuth(), h.ApiGetGlottoDraftCount)
 	api.POST("/lang-calculation/:id/langs", RequireAuth(), h.ApiAddServiceToGlotto)
 	api.PUT("/lang-calculation/:id/complete", RequireAuth(), RequireLinguist(), h.ApiCompleteLangCalculation)
+	api.PUT("/lang-calculation/:id/form", RequireAuth(), h.ApiFormGlotto)
+	api.PUT("/lang-calculation/:id/base/:language_id", RequireAuth(), h.ApiSetBaseLanguage)
 
 	api.DELETE("/lang-calculation/:id", RequireAuth(), h.ApiDeleteGlotto)
 

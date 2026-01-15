@@ -1,7 +1,7 @@
 package repository
 
 import (
-	_ "errors"
+	"errors"
 	"fmt"
 	"time"
 
@@ -36,26 +36,34 @@ func (r *Repository) GetGlottosFiltered(status string, dateFrom, dateTo *time.Ti
 
 // FormGlotto — формирование заявки создателем (проверки минимальные)
 func (r *Repository) FormGlotto(id uint, researcherID uint) error {
-	var g ds.LangCalculation
-	if err := r.db.Preload("Languages").First(&g, id).Error; err != nil {
-		return err
-	}
-	if g.Status != "черновик" {
-		return fmt.Errorf("заявка не в статусе черновик")
-	}
-	// проверка: должно быть хотя бы 1 язык
-	var cnt int64
-	if err := r.db.Model(&ds.LangCalculationLanguage{}).Where("lang_calculation_id = ?", id).Count(&cnt).Error; err != nil {
-		return err
-	}
-	if cnt == 0 {
-		return fmt.Errorf("недостаточно языков для формирования")
-	}
-	return r.db.Model(&ds.LangCalculation{}).Where("id = ?", id).Updates(map[string]interface{}{
-		"status":      "сформирован",
-		"date_update": time.Now(),
-		"date_create": g.DateCreate,
-	}).Error
+	return r.db.Transaction(func(tx *gorm.DB) error {
+		var g ds.LangCalculation
+
+		if err := tx.Where("id = ? AND researcher_id = ?", id, researcherID).First(&g).Error; err != nil {
+			if errors.Is(err, gorm.ErrRecordNotFound) {
+				return errors.New("draft not found or you are not the owner")
+			}
+			return err
+		}
+
+		if g.Status != "черновик" {
+			return fmt.Errorf("заявка не в статусе черновик")
+		}
+
+		// проверка: должно быть хотя бы 1 язык
+		var cnt int64
+		if err := tx.Model(&ds.LangCalculationLanguage{}).Where("lang_calculation_id = ?", id).Count(&cnt).Error; err != nil {
+			return err
+		}
+		if cnt == 0 {
+			return fmt.Errorf("недостаточно языков для формирования")
+		}
+
+		return tx.Model(&ds.LangCalculation{}).Where("id = ?", id).Updates(map[string]interface{}{
+			"status":      "сформирован",
+			"date_update": time.Now(),
+		}).Error
+	})
 }
 
 /* Ниже актуальная версия + переименовала глотто в langCalculation
